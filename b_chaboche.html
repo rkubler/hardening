@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaboche model – superposition of back stresses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">B · Nonlinear kinematic hardening</p>
+  <h1>Superposition of back stresses (Chaboche, 1986)</h1>
+  <p class="lede">Up to four Armstrong–Frederick back stresses added together. Each term has its own modulus C<sub>i</sub> and saturation rate γ<sub>i</sub>, so each one describes a different part of the stress–strain curve. The second plot shows how each back stress evolves.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress–strain curve</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Back stresses</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Back stresses"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      <span class="t">X</span> = Σ<sub>i</sub> <span class="t">X</span><sub>i</sub>
+      &nbsp;&nbsp;&nbsp;&nbsp; d<span class="t">X</span><sub>i</sub> = <sup>2</sup>&frasl;<sub>3</sub> C<sub>i</sub> d<span class="t">ε</span><sup>p</sup> − γ<sub>i</sub> <span class="t">X</span><sub>i</sub> dp
+      &nbsp;&nbsp;&nbsp;&nbsp; f = J(<span class="t">σ</span> − <span class="t">X</span>) − (σ<sub>y</sub> + R) ≤ 0
+    </div>
+    <ul>
+      <li>Each term is an Armstrong–Frederick law. Term i saturates at r<sub>i</sub> = C<sub>i</sub>/γ<sub>i</sub>, after a plastic strain of about 3/γ<sub>i</sub>.</li>
+      <li>In uniaxial tension: σ = σ<sub>y</sub> + R + Σ<sub>i</sub> (C<sub>i</sub>/γ<sub>i</sub>)(1 − e<sup>−γ<sub>i</sub> ε<sup>p</sup></sup>).</li>
+      <li>γ<sub>i</sub> = 0 gives a linear (Prager) term; C<sub>i</sub> = 0 switches the term off.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p>With γ values separated by decades, the term with the large γ (about 10³) saturates within a few tenths of a percent and gives the sharp transition after yield. The intermediate term forms the knee of the curve. The term with the small γ (1 to 10, or 0) hardens almost linearly, keeps a long memory and controls ratcheting and mean stress relaxation.</p>
+    <p>In strain cycles, the fast terms switch sign at each reversal while the slow term barely moves: the loop shape comes from the fast terms, the long-term drift from the slow one.</p>
+    <p>Under stress cycles with a mean stress, the strain still ratchets at a constant rate per cycle, because every term has the Armstrong–Frederick recall. The threshold model (C), and the models in E, were designed to reduce this.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+
+const COLS = ['--s1', '--s2', '--s3', '--s4'].map(UI.color), INK = UI.color('--ink');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const defaults = [[100000, 1000], [20000, 200], [2000, 10], [0, 0]];
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'Q', label: 'Q (Voce)', name: 'Q', unit: 'MPa', value: 0, min: 0 },
+  { id: 'b', label: 'b (Voce)', name: 'b', unit: '–', value: 0, min: 0 },
+].concat(...defaults.map((d, i) => [
+  { id: `C${i + 1}`, label: `C<sub>${i + 1}</sub>`, name: `C${i + 1}`, unit: 'MPa', value: d[0], min: 0 },
+  { id: `g${i + 1}`, label: `γ<sub>${i + 1}</sub>`, name: `γ${i + 1}`, unit: '–', value: d[1], min: 0 },
+]));
+const tests = {
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 3, gt: 0, max: 30 }] },
+  strain: { label: 'Strain-controlled cycles', desc: 'Cycles of amplitude εa around a mean strain εm.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 1.0, gt: 0, max: 10 },
+           { id: 'em', label: 'ε<sub>m</sub>', name: 'εm', unit: '%', value: 0, min: -10, max: 10 },
+           { id: 'Ns', label: 'Cycles', name: 'Cycles', unit: '', value: 10, min: 1, max: 500 }] },
+  stress: { label: 'Stress-controlled cycles (ratcheting)', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 450 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -250 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 50, min: 1, max: 500 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+};
+const terms = (m) => [1, 2, 3, 4].map((i) => ({ C: m[`C${i}`], g: m[`g${i}`], i })).filter((t) => t.C > 0);
+const capacity = (m) => terms(m).reduce((s, t) => s + (t.g > 0 ? t.C / t.g : Infinity), m.sy + m.Q);
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (!terms(m).length) return 'Give at least one back stress a modulus C greater than 0.';
+    if (test === 'stress') {
+      const cap = capacity(m);
+      if (Math.max(v.smax, -v.smin) >= 0.98 * cap) return `The peak stress must stay below σy + Q + Σ C/γ = ${Math.round(cap)} MPa.`;
+    }
+    return null;
+  },
+  run(m, test, v) {
+    const T = terms(m);
+    const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, Q: m.Q, b: m.b, terms: T.map((t) => ({ C: t.C, g: t.g })) });
+    const P = Hardening.programs;
+    let r;
+    if (test === 'mono') r = Hardening.run(mp, P.tension(v.emax / 100));
+    else if (test === 'strain') r = Hardening.run(mp, P.strainCycles((v.em + v.ea) / 100, (v.em - v.ea) / 100, Math.round(v.Ns)));
+    else r = Hardening.run(mp, P.stressCycles(v.smax, v.smin, Math.round(v.N)), { stressStep: 1 });
+    Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', xzero: test === 'mono',
+      series: [{ name: 'σ', pts: r.hist.map((h) => [100 * h.eps, h.sig]), color: COLS[0] }], tip: tipSE });
+    if (test === 'stress') {
+      const pk = r.ends.filter((e) => e.label === 'max');
+      p2Cap.textContent = 'Back stresses at σmax in each cycle';
+      const ser = T.map((t, j) => ({ name: `X${'₁₂₃₄'[t.i - 1]} (r = ${t.g > 0 ? Math.round(t.C / t.g) + ' MPa' : '∞'})`,
+        pts: pk.map((e, k) => [k + 1, e.X[j][0]]), color: COLS[t.i - 1] }));
+      ser.push({ name: 'Total X', pts: pk.map((e, k) => [k + 1, e.X.reduce((s, x) => s + x[0], 0)]), color: INK, dash: '6 4' });
+      Plot.draw(p2, p2Tip, { xlabel: 'Cycle', ylabel: 'Uniaxial back stress (MPa)', series: ser,
+        tip: (n, x, y) => `${n}, cycle ${x}: ${Math.round(y)} MPa` });
+    } else {
+      const xKey = test === 'mono' ? 'epsp' : 'eps';
+      p2Cap.textContent = test === 'mono' ? 'Back stresses against plastic strain' : 'Back stresses against strain';
+      const ser = T.map((t, j) => ({ name: `X${'₁₂₃₄'[t.i - 1]} (r = ${t.g > 0 ? Math.round(t.C / t.g) + ' MPa' : '∞'})`,
+        pts: r.hist.map((h) => [100 * h[xKey], h.X[j][0]]), color: COLS[t.i - 1] }));
+      ser.push({ name: 'Total X', pts: r.hist.map((h) => [100 * h[xKey], h.X.reduce((s, x) => s + x[0], 0)]), color: INK, dash: '6 4' });
+      Plot.draw(p2, p2Tip, { xlabel: test === 'mono' ? 'Plastic strain (%)' : 'Strain (%)', ylabel: 'Uniaxial back stress (MPa)', xzero: test === 'mono',
+        series: ser, tip: (n, x, y) => `${n}: ${x.toFixed(3)} %, ${Math.round(y)} MPa` });
+    }
+    const cap = capacity(m);
+    const base = [{ label: 'Σ C/γ', value: isFinite(cap) ? `${Math.round(cap - m.sy - m.Q)} MPa` : '∞ (linear term)' },
+                  { label: 'Saturation stress', value: isFinite(cap) ? `${Math.round(cap)} MPa` : '∞' }];
+    if (test === 'mono') base.push({ label: 'Final stress', value: `${Math.round(r.ends[0].sig)} MPa` });
+    else if (test === 'strain') {
+      const mx = UI.peaks(r.ends, 'max', 'sig'), mn = UI.peaks(r.ends, 'min', 'sig'), n = mn.length;
+      base.push({ label: `Mean stress, cycle ${n}`, value: `${Math.round(0.5 * (mx[n] + mn[n - 1]))} MPa` });
+    } else {
+      const mx = UI.peaks(r.ends, 'max', 'eps'), n = mx.length;
+      base.push({ label: 'Ratcheting rate, last cycle', value: n > 1 ? `${UI.fix(100 * (mx[n - 1] - mx[n - 2]), 4)} %/cycle` : '—' });
+    }
+    UI.stats(document.getElementById('stats'), base);
+  },
+});
+
+</script>
+</body>
+</html>

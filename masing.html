@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masing behaviour – hysteresis loops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8; --panel:#FFFFFF; --ink:#18212C; --ink2:#556070; --rule:#D6DCE4; --grid:#E4E8EE;
+  --s1:#0F8B7D; --s2:#6457C9; --s3:#C06A12; --path:#1F5FA8;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#10151C;--panel:#18202A;--ink:#E6EBF1;--ink2:#9AA6B5;--rule:#2C3643;--grid:#26303C;
+        --s1:#3CC3B1;--s2:#9C92F0;--s3:#E79A4B;--path:#6FA8F0;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
+main{max-width:1080px;margin:0 auto;padding:32px 20px 48px}
+h1{font:400 30px/1.2 var(--serif);margin:0 0 6px}
+h2{font:500 15px/1.3 var(--sans);margin:0 0 10px}
+.lede{color:var(--ink2);max-width:68ch;margin:0 0 24px}
+.back{display:inline-block;font-size:14px;color:var(--path);text-decoration:none;margin:0 0 14px}
+.back:hover{text-decoration:underline}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;border:0;padding:7px 14px;background:transparent;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--path);color:var(--panel);font-weight:500}
+.seg button:focus-visible{outline:2px solid var(--path);outline-offset:-2px}
+.row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.status{color:var(--ink2);font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;color:var(--ink2);margin:14px 0 6px}
+.legend span{display:flex;align-items:center;gap:6px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:6px}
+.cap{font-size:14px;font-weight:500;margin:0 0 6px}
+.box{position:relative}
+.box svg{width:100%;height:auto;display:block;font-family:var(--sans)}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:4px 8px;font-size:12.5px;color:var(--ink);white-space:nowrap;display:none;font-variant-numeric:tabular-nums}
+.explain{margin-top:24px;max-width:75ch}
+.explain p{margin:0 0 10px}
+.eq{font-family:var(--serif);font-style:italic}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <h1>Masing behaviour</h1>
+  <p class="lede">Stabilized hysteresis loops at three strain amplitudes. On the right, each upper branch is moved so that it starts at the lower tip of its loop. For a Masing material all branches fall on one curve: twice the cyclic stress–strain curve.</p>
+
+  <section class="panel">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Material type">
+        <button id="bM" aria-pressed="true">Masing material</button>
+        <button id="bN" aria-pressed="false">Non-Masing material</button>
+      </div>
+      <span class="status" id="msg" aria-live="polite"></span>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="charts">
+      <div>
+        <p class="cap">Stabilized loops</p>
+        <div class="box"><svg id="c1" viewBox="0 0 520 340" role="img" aria-label="Stabilized hysteresis loops at strain amplitudes of 0.3, 0.6 and 1.0 percent"></svg><div class="tip" id="t1"></div></div>
+      </div>
+      <div>
+        <p class="cap">Upper branches, moved to start at the lower tip</p>
+        <div class="box"><svg id="c2" viewBox="0 0 520 340" role="img" aria-label="Upper loop branches shifted to a common origin, compared with twice the cyclic stress-strain curve"></svg><div class="tip" id="t2"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="explain">
+    <h2>What to look for</h2>
+    <p>Masing's rule states that a loop branch, measured from its reversal point, is the cyclic stress–strain curve <span class="eq">σ = f(ε)</span> scaled by a factor of two: <span class="eq">σ − σ<sub>r</sub> = 2 f((ε − ε<sub>r</sub>)/2)</span>. In practice, one stabilized loop is then enough to predict the loops at every other amplitude.</p>
+    <p>For the non-Masing material, each branch still ends on the dashed curve, because its tip is a point of the cyclic curve, but the paths differ: the elastic part at the start of the branch gets longer as the amplitude grows. This is typical of 316L stainless steel. Such materials need a memory of the strain range in the model.</p>
+    <p>Both materials are illustrative. The Masing material follows a Ramberg–Osgood cyclic curve (E = 200 GPa, K′ = 1100 MPa, n′ = 0.15). The non-Masing material adds an elastic range that grows with the amplitude (about 76, 112 and 160 MPa).</p>
+  </section>
+</main>
+
+<script>
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COL = [css('--s1'), css('--s2'), css('--s3')];
+const INK = css('--ink'), INK2 = css('--ink2'), GRID = css('--grid'), RULE = css('--rule'), PANEL = css('--panel');
+const AMPS = [0.003, 0.006, 0.010];
+const E = 200000, n = 0.15;
+const NS = 'http://www.w3.org/2000/svg';
+
+// Strain range of a loop branch for a stress range ds
+function dEps(ds, mat, ea) {
+  if (mat === 'M') return ds / E + 2 * Math.pow(ds / (2 * 1100), 1 / n);
+  const s0 = 40 + 12000 * ea, K = 900;
+  return ds / E + 2 * Math.pow(Math.max(ds - 2 * s0, 0) / (2 * K), 1 / n);
+}
+// Stress amplitude of the stabilized loop at strain amplitude ea (bisection)
+function tip(ea, mat) {
+  let lo = 0, hi = 2000;
+  for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; (dEps(2 * m, mat, ea) < 2 * ea) ? lo = m : hi = m; }
+  return lo;
+}
+function loop(ea, mat) {
+  const sa = tip(ea, mat), up = [], lo = [], N = 120;
+  for (let k = 0; k <= N; k++) {
+    const ds = 2 * sa * k / N, de = dEps(ds, mat, ea);
+    up.push([100 * (-ea + de), -sa + ds]);
+    lo.push([100 * (ea - de), sa - ds]);
+  }
+  return { pts: up.concat(lo), up: up.map(p => [p[0] + 100 * ea, p[1] + sa]) };
+}
+function cyc2(mat) {
+  const out = [[0, 0]];
+  for (let ea = 0.0002; ea <= 0.0101; ea += 0.0002) { const sa = tip(ea, mat); out.push([200 * ea, 2 * sa]); }
+  return out;
+}
+
+// Minimal SVG plot: axes, grid, polylines, markers, hover read-out
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function plot(svg, tipEl, cfg, series) {
+  svg.innerHTML = '';
+  const W = 520, H = 340, L = 62, R = 14, T = 12, B = 46;
+  const X = v => L + (v - cfg.x[0]) / (cfg.x[1] - cfg.x[0]) * (W - L - R);
+  const Y = v => H - B - (v - cfg.y[0]) / (cfg.y[1] - cfg.y[0]) * (H - T - B);
+  cfg.xt.forEach(v => {
+    el('line', { x1: X(v), x2: X(v), y1: T, y2: H - B, stroke: GRID }, svg);
+    el('text', { x: X(v), y: H - B + 18, 'text-anchor': 'middle', 'font-size': 12, fill: INK2 }, svg).textContent = v;
+  });
+  cfg.yt.forEach(v => {
+    el('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: GRID }, svg);
+    el('text', { x: L - 8, y: Y(v) + 4, 'text-anchor': 'end', 'font-size': 12, fill: INK2 }, svg).textContent = v;
+  });
+  el('rect', { x: L, y: T, width: W - L - R, height: H - T - B, fill: 'none', stroke: RULE }, svg);
+  el('text', { x: (L + W - R) / 2, y: H - 6, 'text-anchor': 'middle', 'font-size': 12.5, fill: INK2 }, svg).textContent = cfg.xl;
+  el('text', { x: 14, y: (T + H - B) / 2, 'text-anchor': 'middle', 'font-size': 12.5, fill: INK2,
+    transform: `rotate(-90 14 ${(T + H - B) / 2})` }, svg).textContent = cfg.yl;
+  const shape = (s, x, y, c) => s === 0 ? el('circle', { cx: x, cy: y, r: 5, fill: c, stroke: PANEL, 'stroke-width': 2 }, svg)
+    : s === 1 ? el('polygon', { points: `${x},${y - 6} ${x + 6},${y + 5} ${x - 6},${y + 5}`, fill: c, stroke: PANEL, 'stroke-width': 2 }, svg)
+    : el('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 1, fill: c, stroke: PANEL, 'stroke-width': 2 }, svg);
+  series.forEach(s => {
+    el('polyline', { points: s.pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' '), fill: 'none',
+      stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+      'stroke-dasharray': s.dash || 'none' }, svg);
+    (s.marks || []).forEach(i => shape(s.shape, X(s.pts[i][0]), Y(s.pts[i][1]), s.color));
+  });
+  const dot = el('circle', { r: 4, fill: 'none', stroke: INK, 'stroke-width': 1.5, visibility: 'hidden' }, svg);
+  svg.onmousemove = ev => {
+    const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) * W / r.width, sy = (ev.clientY - r.top) * H / r.height;
+    let best = null, bd = 1e9;
+    series.forEach(s => s.pts.forEach(p => { const d = (X(p[0]) - sx) ** 2 + (Y(p[1]) - sy) ** 2; if (d < bd) { bd = d; best = { s, p }; } }));
+    if (!best || bd > 900) { dot.setAttribute('visibility', 'hidden'); tipEl.style.display = 'none'; return; }
+    dot.setAttribute('cx', X(best.p[0])); dot.setAttribute('cy', Y(best.p[1])); dot.setAttribute('visibility', 'visible');
+    tipEl.textContent = `${best.s.name}: ε ${best.p[0].toFixed(2)} %, σ ${Math.round(best.p[1])} MPa`;
+    tipEl.style.display = 'block';
+    const px = X(best.p[0]) * r.width / W, py = Y(best.p[1]) * r.height / H;
+    tipEl.style.left = Math.min(px + 12, r.width - tipEl.offsetWidth - 4) + 'px';
+    tipEl.style.top = Math.max(py - 34, 0) + 'px';
+  };
+  svg.onmouseleave = () => { dot.setAttribute('visibility', 'hidden'); tipEl.style.display = 'none'; };
+}
+
+function render(mat) {
+  const Ls = AMPS.map(a => loop(a, mat));
+  const name = i => `±${(100 * AMPS[i]).toFixed(1)} %`;
+  plot(document.getElementById('c1'), document.getElementById('t1'),
+    { x: [-1.1, 1.1], y: [-700, 700], xt: [-1, -0.5, 0, 0.5, 1], yt: [-600, -300, 0, 300, 600], xl: 'Strain (%)', yl: 'Stress (MPa)' },
+    Ls.map((l, i) => ({ name: name(i), pts: l.pts, color: COL[i], shape: i, marks: [120, l.pts.length - 1] })));
+  plot(document.getElementById('c2'), document.getElementById('t2'),
+    { x: [0, 2.1], y: [0, 1400], xt: [0, 0.5, 1, 1.5, 2], yt: [0, 350, 700, 1050, 1400], xl: 'Strain from lower tip (%)', yl: 'Stress from lower tip (MPa)' },
+    [{ name: '2 × cyclic curve', pts: cyc2(mat), color: INK2, dash: '6 4' }]
+      .concat(Ls.map((l, i) => ({ name: name(i), pts: l.up, color: COL[i], shape: i, marks: [l.up.length - 1] }))));
+  document.getElementById('bM').setAttribute('aria-pressed', mat === 'M');
+  document.getElementById('bN').setAttribute('aria-pressed', mat === 'N');
+  document.getElementById('msg').textContent = mat === 'M'
+    ? 'The shifted branches all lie on twice the cyclic curve.'
+    : 'The shifted branches differ: the elastic range grows with the amplitude.';
+}
+const sym = ['border-radius:50%', 'clip-path:polygon(50% 0,100% 100%,0 100%)', 'border-radius:1px'];
+document.getElementById('legend').innerHTML =
+  AMPS.map((a, i) => `<span><span style="width:10px;height:10px;background:${COL[i]};${sym[i]}"></span>Amplitude ±${(100 * a).toFixed(1)} %</span>`).join('') +
+  `<span><span style="width:18px;height:0;border-top:2px dashed ${INK2}"></span>2 × cyclic stress–strain curve</span>`;
+document.getElementById('bM').onclick = () => render('M');
+document.getElementById('bN').onclick = () => render('N');
+render('M');
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mróz multisurface model – uniaxial explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F8; --panel:#FFFFFF; --ink:#18212C; --ink2:#556070; --rule:#D6DCE4;
+  --s1:#0F8B7D; --s2:#6457C9; --s3:#C06A12; --path:#1F5FA8;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#10151C;--panel:#18202A;--ink:#E6EBF1;--ink2:#9AA6B5;--rule:#2C3643;
+        --s1:#3CC3B1;--s2:#9C92F0;--s3:#E79A4B;--path:#6FA8F0;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans)}
+main{max-width:1080px;margin:0 auto;padding:32px 20px 48px}
+h1{font:400 30px/1.2 var(--serif);margin:0 0 6px}
+.lede{color:var(--ink2);max-width:68ch;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px}
+h2{font:500 15px/1.3 var(--sans);margin:0 0 10px}
+svg text{font-family:var(--sans)}
+#bars text{paint-order:stroke;stroke:var(--panel);stroke-width:5px;stroke-linejoin:round}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+input[type=range]{flex:1;min-width:180px;accent-color:var(--path)}
+button{font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--rule);
+  border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--ink2)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--path);outline-offset:2px}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.readout div{border-top:2px solid var(--rule);padding-top:6px}
+.readout span{display:block;color:var(--ink2);font-size:13px}
+.readout b{font-weight:500;font-size:20px;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-weight:500;text-align:left;color:var(--ink2);padding:4px 4px 6px}
+td{padding:3px 4px}
+td input{width:100%;font:inherit;font-variant-numeric:tabular-nums;color:var(--ink);background:transparent;
+  border:1px solid var(--rule);border-radius:5px;padding:4px 6px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:0}
+.note{color:var(--ink2);font-size:13.5px;margin:10px 0 0}
+.err{color:#C0392B;font-size:13px;min-height:1em;margin:6px 0 0}
+.presets{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.presets button{text-align:left}
+.explain{margin-top:20px;max-width:75ch}
+.explain p{margin:0 0 10px}
+.eq{font-family:var(--serif);font-style:italic}
+.back{display:inline-block;font-size:14px;color:var(--path);text-decoration:none;margin:0 0 14px}
+.back:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <h1>Mróz multisurface model</h1>
+  <p class="lede">In uniaxial loading, each yield surface is an interval on the stress axis. Move the strain slider and watch the inner surfaces push the outer ones; the stress–strain curve below is built from those contacts.</p>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="row">
+        <label for="eps">Strain</label>
+        <input type="range" id="eps" min="-1.2" max="1.2" step="0.01" value="0">
+        <b id="epsout" style="font-weight:500;min-width:70px;text-align:right;font-variant-numeric:tabular-nums">0.00 %</b>
+        <button id="reset">Reset</button>
+      </div>
+
+      <svg id="surf" viewBox="0 0 680 190" width="100%" role="img" aria-label="Positions of the three yield surfaces on the stress axis">
+        <line x1="40" y1="160" x2="640" y2="160" stroke="var(--rule)"/>
+        <g id="ticks"></g>
+        <line id="sm" x1="340" y1="18" x2="340" y2="164" stroke="var(--ink)" stroke-width="2"/>
+        <g id="bars"></g>
+      </svg>
+
+      <div class="readout">
+        <div><span>Stress</span><b id="sig">0 MPa</b></div>
+        <div><span>Surfaces moving</span><b id="act">0</b></div>
+        <div><span>Tangent modulus</span><b id="tan">200 GPa</b></div>
+      </div>
+
+      <svg id="curve" viewBox="0 0 680 340" width="100%" role="img" aria-label="Stress–strain curve" style="margin-top:14px">
+        <g id="grid"></g>
+        <polyline id="path" fill="none" stroke="var(--path)" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle id="pt" r="4.5" fill="var(--path)"/>
+      </svg>
+    </section>
+
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <table>
+          <thead><tr><th>Surface</th><th>k (MPa)</th><th>H (MPa)</th></tr></thead>
+          <tbody id="params"></tbody>
+        </table>
+        <div class="row" style="margin-top:10px">
+          <label for="E" style="font-size:14px">E (MPa)</label>
+          <input id="E" type="number" value="200000" style="flex:1;font:inherit;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:5px;padding:4px 6px">
+        </div>
+        <p class="err" id="err"></p>
+        <button id="apply" style="margin-top:4px">Apply and reset</button>
+        <p class="note">Sizes must increase from surface 1 to 3. H is the plastic modulus while that surface is the outermost moving one; beyond surface 3 the last value is kept.</p>
+      </section>
+
+      <section class="panel" style="margin-top:16px">
+        <h2>Loading paths</h2>
+        <div class="presets">
+          <button data-path="0.012">Monotonic tension to 1.2 %</button>
+          <button data-path="0.01,-0.01,0.01,-0.01">Symmetric cycles ±1 % (Masing)</button>
+          <button data-path="0.009,0.001,0.006,0.001,0.006,0.012">Inner loop, then continue (memory)</button>
+          <button data-path="0.008,0.002,0.008,0.002,0.008,0.002">Cycling with a mean strain</button>
+        </div>
+        <p class="note">Paths start from the virgin state.</p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>What to look for</h2>
+    <p>Only surface 1 is a real yield surface. When the stress reaches it, plastic flow starts with modulus H<sub>1</sub> and the surface is carried along. When it touches surface 2, both move together with modulus H<sub>2</sub>, and so on. The tangent modulus is <span class="eq">E·H<sub>m</sub>/(E+H<sub>m</sub>)</span>, where m is the number of surfaces in contact.</p>
+    <p>On reversal the outer surfaces stay where they were left, so every stage of the reverse curve is twice as long in stress as in the monotonic curve. That is Masing's rule, and the model gives it automatically. After a small inner loop, the curve rejoins the original path exactly at the previous turning point: the model has memory.</p>
+    <p>Under cycling with a mean strain, the loops close after the first cycle and the mean stress does not relax. The translation rule has no recall term, which is why this model is not suited to ratcheting or residual stress relaxation.</p>
+  </section>
+</main>
+
+<script>
+const cols=['var(--s1)','var(--s2)','var(--s3)'];
+let E=200000,K=[200,300,400],H=[40000,8000,1500];
+let a,sig,eps,trace,nAct,anim=null;
+
+function buildParams(){
+  const tb=document.getElementById('params');tb.innerHTML='';
+  for(let i=0;i<3;i++){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="sw" style="background:${cols[i]}"></span>${i+1}</td>
+      <td><input type="number" id="k${i}" value="${K[i]}" aria-label="Size of surface ${i+1}"></td>
+      <td><input type="number" id="h${i}" value="${H[i]}" aria-label="Plastic modulus of surface ${i+1}"></td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function reset(){
+  if(anim){cancelAnimationFrame(anim);anim=null;}
+  a=[0,0,0];sig=0;eps=0;trace=[[0,0]];nAct=0;
+  document.getElementById('eps').value=0;draw();
+}
+
+function countActive(nu){let m=0;for(let i=0;i<3;i++){if((sig-a[i])*nu>=K[i]-1e-7)m=i+1;else break;}return m;}
+
+function step(de){
+  const nu=Math.sign(de); if(!nu)return;
+  const m=countActive(nu);
+  const Et=m===0?E:E*H[m-1]/(E+H[m-1]);
+  let st=sig+Et*de;
+  if(m<3 && (st-a[m])*nu>K[m]){
+    const lim=a[m]+nu*K[m];
+    const rest=de-(lim-sig)/Et;
+    const Et2=E*H[m]/(E+H[m]);
+    st=lim+Et2*rest;
+  }
+  sig=st;eps+=de;
+  for(let i=0;i<3;i++){if((sig-a[i])*nu>K[i])a[i]=sig-nu*K[i];}
+  nAct=countActive(nu);
+}
+
+function moveTo(target){
+  const n=Math.max(1,Math.ceil(Math.abs(target-eps)/2e-6));const de=(target-eps)/n;
+  for(let i=0;i<n;i++){step(de);if(i%20===0)trace.push([eps,sig]);}
+  trace.push([eps,sig]);if(trace.length>40000)trace=trace.slice(-40000);
+}
+
+const SMAX=600;
+const sx=s=>340+s*(300/SMAX);
+const px=e=>70+(e+0.012)/0.024*560, py=s=>170-s*(150/SMAX);
+
+function drawStatic(){
+  let t='';
+  for(let s=-600;s<=600;s+=200){
+    t+=`<line x1="${sx(s)}" y1="160" x2="${sx(s)}" y2="165" stroke="var(--rule)"/>
+        <text x="${sx(s)}" y="180" font-size="12" fill="var(--ink2)" text-anchor="middle">${s}</text>`;
+  }
+  t+=`<text x="640" y="150" font-size="12" fill="var(--ink2)" text-anchor="end">stress, MPa</text>`;
+  document.getElementById('ticks').innerHTML=t;
+  let g='';
+  for(let s=-600;s<=600;s+=200){
+    g+=`<line x1="70" y1="${py(s)}" x2="630" y2="${py(s)}" stroke="var(--rule)" stroke-width="${s===0?1:0.5}"/>
+        <text x="62" y="${py(s)+4}" font-size="12" fill="var(--ink2)" text-anchor="end">${s}</text>`;
+  }
+  for(let e=-1.2;e<=1.21;e+=0.4){
+    const x=px(e/100);
+    g+=`<line x1="${x}" y1="20" x2="${x}" y2="320" stroke="var(--rule)" stroke-width="${Math.abs(e)<1e-9?1:0.5}"/>
+        <text x="${x}" y="336" font-size="12" fill="var(--ink2)" text-anchor="middle">${e.toFixed(1)} %</text>`;
+  }
+  g+=`<text x="76" y="30" font-size="12" fill="var(--ink2)">stress, MPa</text>`;
+  document.getElementById('grid').innerHTML=g;
+}
+
+function draw(){
+  let b='';
+  const ys=[22,64,106];
+  for(let i=2;i>=0;i--){
+    const y=ys[2-i];
+    b+=`<text x="40" y="${y}" font-size="12" fill="var(--ink2)">Surface ${i+1}${i===0?' (yield)':''}, k = ${K[i]} MPa</text>
+        <rect x="${sx(a[i]-K[i])}" y="${y+6}" width="${2*K[i]*300/SMAX}" height="22" rx="4"
+          fill="${cols[i]}" fill-opacity="0.16" stroke="${cols[i]}" stroke-width="1.2"/>
+        <circle cx="${sx(a[i])}" cy="${y+17}" r="2.5" fill="${cols[i]}"/>`;
+  }
+  document.getElementById('bars').innerHTML=b;
+  const m=document.getElementById('sm');m.setAttribute('x1',sx(sig));m.setAttribute('x2',sx(sig));
+  document.getElementById('path').setAttribute('points',trace.map(p=>px(p[0]).toFixed(1)+','+py(p[1]).toFixed(1)).join(' '));
+  const c=document.getElementById('pt');c.setAttribute('cx',px(eps));c.setAttribute('cy',py(sig));
+  document.getElementById('sig').textContent=Math.round(sig)+' MPa';
+  document.getElementById('act').textContent=nAct===0?'0 (elastic)':nAct;
+  const Et=nAct===0?E:E*H[nAct-1]/(E+H[nAct-1]);
+  document.getElementById('tan').textContent=(Et/1000).toFixed(1)+' GPa';
+  document.getElementById('epsout').textContent=(eps*100).toFixed(2)+' %';
+  document.getElementById('eps').value=(eps*100).toFixed(2);
+}
+
+document.getElementById('eps').addEventListener('input',e=>{
+  if(anim){cancelAnimationFrame(anim);anim=null;}
+  moveTo(parseFloat(e.target.value)/100);draw();
+});
+document.getElementById('reset').addEventListener('click',reset);
+
+document.getElementById('apply').addEventListener('click',()=>{
+  const err=document.getElementById('err');
+  const nk=[0,1,2].map(i=>parseFloat(document.getElementById('k'+i).value));
+  const nh=[0,1,2].map(i=>parseFloat(document.getElementById('h'+i).value));
+  const nE=parseFloat(document.getElementById('E').value);
+  if([...nk,...nh,nE].some(v=>!isFinite(v)||v<=0)){err.textContent='Enter positive numbers in every field.';return;}
+  if(!(nk[0]<nk[1]&&nk[1]<nk[2])){err.textContent='Sizes must increase: k1 < k2 < k3.';return;}
+  if(nk[2]>=SMAX){err.textContent='Keep k3 below 600 MPa so it fits on the plot.';return;}
+  err.textContent='';K=nk;H=nh;E=nE;reset();
+});
+document.getElementById('params').addEventListener('input',()=>{document.getElementById('err').textContent='';});
+
+document.querySelectorAll('[data-path]').forEach(btn=>btn.addEventListener('click',()=>{
+  reset();
+  const pts=btn.dataset.path.split(',').map(Number);
+  let idx=0;const speed=0.00025;
+  const tick=()=>{
+    if(idx>=pts.length){anim=null;return;}
+    const target=pts[idx];const d=target-eps;
+    if(Math.abs(d)<=speed){moveTo(target);idx++;}else{moveTo(eps+Math.sign(d)*speed);}
+    draw();anim=requestAnimationFrame(tick);
+  };
+  anim=requestAnimationFrame(tick);
+}));
+
+buildParams();drawStatic();reset();
+</script>
+</body>
+</html>

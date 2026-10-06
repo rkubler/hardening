@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ohno–Wang models I and II – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">E4 · Models designed for ratcheting</p>
+  <h1>Ohno–Wang (1993), models I and II</h1>
+  <p class="lede">Three back stresses whose recall only switches on near a critical value r<sub>i</sub> = C<sub>i</sub>/γ<sub>i</sub>, and only while the flow has a component along the back stress. Each run compares Chaboche, Ohno–Wang I and Ohno–Wang II with the same C<sub>i</sub> and γ<sub>i</sub>.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Comparison per cycle</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Comparison per cycle"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Recall weight</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Recall weight"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Stress–strain curve of Ohno–Wang II</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Stress–strain curve of Ohno–Wang II"></svg><div class="tip" id="p3Tip"></div></div>
+      <div id="surf"></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      d<span class="t">X</span><sub>i</sub> = γ<sub>i</sub> [ <sup>2</sup>&frasl;<sub>3</sub> r<sub>i</sub> d<span class="t">ε</span><sup>p</sup> − w<sub>i</sub> ⟨d<span class="t">ε</span><sup>p</sup> : <span class="t">k</span><sub>i</sub>⟩ <span class="t">X</span><sub>i</sub> ]
+      &nbsp;&nbsp;&nbsp; r<sub>i</sub> = C<sub>i</sub>/γ<sub>i</sub>, &nbsp; X̄<sub>i</sub> = J(<span class="t">X</span><sub>i</sub>), &nbsp; <span class="t">k</span><sub>i</sub> = <span class="t">X</span><sub>i</sub>/X̄<sub>i</sub><br>
+      Model I: &nbsp; w<sub>i</sub> = H(X̄<sub>i</sub> − r<sub>i</sub>) &nbsp;&nbsp;&nbsp;&nbsp; Model II: &nbsp; w<sub>i</sub> = (X̄<sub>i</sub>/r<sub>i</sub>)<sup>m<sub>i</sub></sup>
+    </div>
+    <ul>
+      <li>The hardening term γ<sub>i</sub> r<sub>i</sub> = C<sub>i</sub> is the same as in Chaboche, so the loop shapes are almost the same.</li>
+      <li><b>Recall weight</b> w<sub>i</sub>: Model I has no recall at all below the critical value r<sub>i</sub> (H is the Heaviside step). Model II has a weak recall that grows as (X̄<sub>i</sub>/r<sub>i</sub>)<sup>m</sup>; the larger m, the closer to Model I.</li>
+      <li><b>Macaulay bracket</b> ⟨dε<sup>p</sup> : k<sub>i</sub>⟩: the recall only acts while the plastic flow has a component along X<sub>i</sub>, not just after a reversal.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Ratcheting.</b> The tiles above the plots give the final strain and the rate of the last cycle of each model. Chaboche ratchets at a constant rate. Ohno–Wang I stops ratcheting quickly (often too quickly compared with experiments). Ohno–Wang II keeps ratcheting at a slow, decreasing rate, which is usually closest to measurements; increase m to slow it further.</p>
+    <p><b>Mean stress relaxation.</b> Chaboche relaxes the mean stress to zero within a few tens of cycles. Ohno–Wang II relaxes it slowly and continuously, roughly as N<sup>−1/m</sup>: this is the behaviour often observed for residual stresses in cyclic tests.</p>
+    <p><b>Axial stress + cyclic shear.</b> The Macaulay bracket ⟨dε<sup>p</sup> : k<sub>i</sub>⟩ also reduces multiaxial ratcheting: in shear, the flow is nearly perpendicular to the axial part of the back stresses, so their recall is small. Use the yield surface display to follow how the surface drifts along the σ axis in each cycle.</p>
+    <p>Ohno–Wang I does not relax at all here: at these small plastic strains no back stress reaches its critical value r<sub>i</sub>, so there is no recall. This is why Model I underestimates relaxation and Model II is preferred for residual stresses.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/surface.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3 = UI.color('--s3'), INK2 = UI.color('--ink2');
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'C1', label: 'C<sub>1</sub>', name: 'C1', unit: 'MPa', value: 100000, gt: 0 },
+  { id: 'g1', label: 'γ<sub>1</sub>', name: 'γ1', unit: '–', value: 1000, gt: 0 },
+  { id: 'C2', label: 'C<sub>2</sub>', name: 'C2', unit: 'MPa', value: 20000, gt: 0 },
+  { id: 'g2', label: 'γ<sub>2</sub>', name: 'γ2', unit: '–', value: 200, gt: 0 },
+  { id: 'C3', label: 'C<sub>3</sub>', name: 'C3', unit: 'MPa', value: 2000, gt: 0 },
+  { id: 'g3', label: 'γ<sub>3</sub>', name: 'γ3', unit: '–', value: 10, gt: 0 },
+  { id: 'm', label: 'm (Model II, all terms)', name: 'm', unit: '–', value: 5, gt: 0, max: 100 },
+];
+const tests = {
+  ratchet: { label: 'Ratcheting (stress control)', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 450 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -250 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 200, min: 1, max: 500 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+  tt: { label: 'Axial stress + cyclic shear strain', desc: 'Thin-walled tube: constant axial stress σ0, then symmetric shear strain cycles ±γa (multiaxial ratcheting test).',
+    spec: [{ id: 's0', label: 'σ<sub>0</sub> (axial)', name: 'σ0', unit: 'MPa', value: 100 },
+           { id: 'ga', label: 'γ<sub>a</sub> (shear)', name: 'γa', unit: '%', value: 0.6, gt: 0, max: 10 },
+           { id: 'Nt', label: 'Cycles', name: 'Cycles', unit: '', value: 30, min: 1, max: 300 }] },
+  relax: { label: 'Mean stress relaxation (strain control)', desc: 'Strain cycles between εmax and εmin after a first loading to εmax.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 0.65 },
+           { id: 'emin', label: 'ε<sub>min</sub>', name: 'εmin', unit: '%', value: 0.15 },
+           { id: 'Nr', label: 'Cycles', name: 'Cycles', unit: '', value: 300, min: 1, max: 500 }],
+    check: (v) => v.emax <= v.emin ? 'εmax must be greater than εmin.' : null },
+};
+const surf = Surface.mount(document.getElementById('surf'));
+const base = (m) => [{ C: m.C1, g: m.g1 }, { C: m.C2, g: m.g2 }, { C: m.C3, g: m.g3 }];
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (test === 'ratchet') {
+      const cap = m.sy + base(m).reduce((s, t) => s + t.C / t.g, 0);
+      if (Math.max(v.smax, -v.smin) >= 0.98 * cap) return `The peak stress must stay below σy + Σ C/γ = ${Math.round(cap)} MPa.`;
+    }
+    if (test === 'tt') {
+      const cap = m.sy + base(m).reduce((s, t) => s + t.C / t.g, 0);
+      if (Math.abs(v.s0) >= 0.9 * cap) return `The axial stress must stay well below σy + Σ C/γ = ${Math.round(cap)} MPa.`;
+    }
+    return null;
+  },
+  run(m, test, v) {
+    const P = Hardening.programs;
+    const models = [
+      { name: 'Chaboche', terms: base(m), color: S1, dash: null },
+      { name: 'Ohno–Wang I', terms: base(m).map((t) => Object.assign({ rule: 'ow', model: 1 }, t)), color: S3, dash: '2 4' },
+      { name: `Ohno–Wang II (m = ${m.m})`, terms: base(m).map((t) => Object.assign({ rule: 'ow', model: 2, m: m.m }, t)), color: S2, dash: '7 4' },
+    ];
+    const res = models.map((md) => {
+      const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, terms: md.terms });
+      const r = test === 'ratchet'
+        ? Hardening.run(mp, P.stressCycles(v.smax, v.smin, Math.round(v.N)), { stressStep: 1 })
+        : test === 'tt'
+        ? Hardening.run(mp, P.tensionTorsion(v.s0, v.ga / 100, Math.round(v.Nt)), { strainStep: 2e-5, stressStep: 1, maxPoints: 5000 })
+        : Hardening.run(mp, P.strainCycles(v.emax / 100, v.emin / 100, Math.round(v.Nr)), { strainStep: 2e-5 });
+      return Object.assign({ r }, md);
+    });
+    let per;
+    if (test === 'ratchet' || test === 'tt') {
+      per = res.map((o) => UI.peaks(o.r.ends, 'max', 'eps').map((e) => 100 * e));
+      p1Cap.textContent = test === 'tt' ? 'Axial ratcheting: axial strain at +γa in each cycle' : 'Ratcheting: strain at σmax in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: res.map((o, k) => ({ name: o.name, pts: per[k].map((e, i) => [i + 1, e]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(3)} %`, ylabel: test === 'tt' ? 'Axial strain (%)' : 'Strain at σmax (%)' });
+      UI.stats(document.getElementById('stats'), res.map((o, k) => {
+        const e = per[k], n = e.length;
+        return { label: `${o.name}: final strain, last-cycle rate`, value: `${e[n - 1].toFixed(2)} %, ${n > 1 ? UI.fix(e[n - 1] - e[n - 2], 4) : '—'} %/cyc` };
+      }));
+    } else {
+      per = res.map((o) => { const mx = UI.peaks(o.r.ends, 'max', 'sig'), mn = UI.peaks(o.r.ends, 'min', 'sig'); return mn.map((s, i) => 0.5 * (s + mx[i])); });
+      p1Cap.textContent = 'Mean stress in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Mean stress (MPa)', yzero: true,
+        series: res.map((o, k) => ({ name: o.name, pts: per[k].map((s, i) => [i + 1, s]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(1)} MPa` });
+      UI.stats(document.getElementById('stats'), res.map((o, k) => {
+        const s = per[k], n = s.length;
+        return { label: `${o.name}: mean stress, cycles 1 and ${n}`, value: `${Math.round(s[0])} → ${s[n - 1].toFixed(1)} MPa` };
+      }));
+    }
+    const xr = []; for (let x = 0; x <= 1.2001; x += 0.01) xr.push(+x.toFixed(2));
+    Plot.draw(p2, p2Tip, { xlabel: 'X̄ / r', ylabel: 'Recall weight w', ydomain: [0, 2],
+      series: [{ name: 'Ohno–Wang I: step at X̄ = r', pts: xr.map((x) => [x, x >= 1 ? 1 : 0]), color: S3, dash: '2 4' },
+               { name: `Ohno–Wang II: (X̄/r)^${m.m}`, pts: xr.map((x) => [x, Math.min(Math.pow(x, m.m), 2.2)]), color: S2, dash: '7 4' }],
+      tip: (n, x, y) => `${n}: X̄/r ${x.toFixed(2)}, w ${y.toFixed(3)}` });
+    const ow2 = res[2].r;
+    if (test === 'tt') {
+      p3Cap.textContent = 'Shear stress–shear strain loops of Ohno–Wang II';
+      Plot.draw(p3, p3Tip, { xlabel: 'Shear strain γ (%)', ylabel: 'Shear stress τ (MPa)',
+        series: [{ name: 'τ', pts: ow2.hist.map((h) => [100 * h.gam, h.tau]), color: S2 }],
+        tip: (n, x, y) => `γ ${x.toFixed(3)} %, τ ${Math.round(y)} MPa` });
+    } else {
+      p3Cap.textContent = 'Stress–strain curve of Ohno–Wang II';
+      Plot.draw(p3, p3Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'σ', pts: ow2.hist.map((h) => [100 * h.eps, h.sig]), color: S2 }],
+        tip: (n, x, y) => `ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa` });
+    }
+    surf.update(res.map((o) => ({ name: o.name, r: o.r, color: o.color })), m.sy, 2);
+  },
+});
+
+</script>
+</body>
+</html>

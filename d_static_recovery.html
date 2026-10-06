@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Static recovery of the back stress – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">D · Time-dependent kinematic hardening</p>
+  <h1>Static recovery (time-dependent)</h1>
+  <p class="lede">An Armstrong–Frederick back stress that also decays with time, even without plastic flow. During a hold at constant strain the back stress recovers and the stress relaxes; during a rest at zero stress the material softens. Each run is compared with the same model without recovery.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress against time</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress against time"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Back stress against time</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Back stress against time"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Stress–strain curve</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p3Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      d<span class="t">X</span> = <sup>2</sup>&frasl;<sub>3</sub> C d<span class="t">ε</span><sup>p</sup> − γ <span class="t">X</span> dp − b<sub>s</sub> J(<span class="t">X</span>)<sup>r<sub>s</sub> − 1</sup> <span class="t">X</span> dt
+      &nbsp;&nbsp;&nbsp;&nbsp; f = J(<span class="t">σ</span> − <span class="t">X</span>) − σ<sub>y</sub> ≤ 0
+    </div>
+    <ul>
+      <li>The first two terms are the Armstrong–Frederick law (dynamic recovery, driven by plastic strain).</li>
+      <li>The last term is <b>static recovery</b>: it acts with time, also when the material is elastic. b<sub>s</sub> (MPa<sup>1−r<sub>s</sub></sup>/s) sets its speed and r<sub>s</sub> its sensitivity to the back stress level. It represents thermally activated rearrangement of dislocations.</li>
+      <li>Here plastic flow is rate independent; in practice static recovery is combined with a viscoplastic flow rule, which adds creep and rate effects.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Hold at constant strain.</b> The back stress decays, so σ − X grows and reaches the yield surface: plastic flow occurs at constant total strain and the stress relaxes. Without recovery the stress stays constant.</p>
+    <p><b>Rest at zero stress.</b> After unloading, the back stress keeps decaying. On reloading the material yields at a lower stress: the recovery has erased part of the prior hardening.</p>
+    <p><b>Dwell cycles.</b> Each hold at a strain peak relaxes the stress, and the back stress is partly erased. The next half-cycle then starts from a smaller back stress, which changes the shape of the loop: the peak stress itself can even end slightly higher, while the stress at the end of each dwell is much lower. The same mechanism, acting on a mean stress, causes the thermal relaxation of residual stresses at high temperature.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2');
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'C', label: 'C', name: 'C', unit: 'MPa', value: 40000, min: 0 },
+  { id: 'g', label: 'γ', name: 'γ', unit: '–', value: 200, min: 0 },
+  { id: 'bs', label: 'b<sub>s</sub> (recovery)', name: 'bs', unit: '', value: 1e-5, min: 0 },
+  { id: 'rs', label: 'r<sub>s</sub> (recovery)', name: 'rs', unit: '–', value: 2, min: 1, max: 10 },
+];
+const tests = {
+  hold: { label: 'Tension then hold (relaxation)', desc: 'Strain-controlled loading to εmax, then the strain is held constant.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 1, gt: 0, max: 10 },
+           { id: 'th', label: 'Hold time', name: 'Hold time', unit: 's', value: 3600, gt: 0, max: 1e7 },
+           { id: 'rate', label: 'Strain rate', name: 'Strain rate', unit: '1/s', value: 1e-3, gt: 0 }] },
+  rest: { label: 'Load, unload, rest, reload', desc: 'Loading to εmax, unloading to zero stress, rest, then reloading by the same strain increment.',
+    spec: [{ id: 'emax2', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 1, gt: 0, max: 10 },
+           { id: 'tr', label: 'Rest time', name: 'Rest time', unit: 's', value: 3600, gt: 0, max: 1e7 },
+           { id: 'rate2', label: 'Strain rate', name: 'Strain rate', unit: '1/s', value: 1e-3, gt: 0 }] },
+  dwell: { label: 'Strain cycles with dwell', desc: 'Symmetric strain cycles ±εa with a hold at each peak.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 0.8, gt: 0, max: 10 },
+           { id: 'td', label: 'Dwell time', name: 'Dwell time', unit: 's', value: 600, gt: 0, max: 1e6 },
+           { id: 'Nd', label: 'Cycles', name: 'Cycles', unit: '', value: 10, min: 1, max: 100 },
+           { id: 'rate3', label: 'Strain rate', name: 'Strain rate', unit: '1/s', value: 1e-3, gt: 0 }] },
+};
+function program(test, v) {
+  const S = [];
+  const ramp = (to, dE, rate, label) => S.push({ ctrl: ['eps', 'sig'], to: [to, 0], time: Math.abs(dE) / rate, label });
+  const hold = (t, label) => S.push({ ctrl: ['eps', 'sig'], to: [null, 0], time: t, label });
+  if (test === 'hold') { const e = v.emax / 100; ramp(e, e, v.rate, 'load'); hold(v.th, 'hold'); }
+  else if (test === 'rest') {
+    const e = v.emax2 / 100;
+    ramp(e, e, v.rate2, 'load');
+    S.push({ ctrl: ['sig', 'sig'], to: [0, 0], time: 0.005 / v.rate2, label: 'unload' });
+    S.push({ ctrl: ['sig', 'sig'], to: [null, 0], time: v.tr, label: 'rest' });
+    S.push({ ctrl: ['eps', 'sig'], to: ['RELOAD', 0], time: e / v.rate2, label: 'reload', reload: e });
+  } else {
+    const e = v.ea / 100;
+    ramp(e, e, v.rate3, 'load'); hold(v.td, 'dwell+');
+    for (let i = 0; i < Math.round(v.Nd); i++) {
+      ramp(-e, 2 * e, v.rate3, 'down'); hold(v.td, 'dwell-');
+      ramp(e, 2 * e, v.rate3, 'up'); hold(v.td, 'dwell+');
+    }
+  }
+  return S;
+}
+function simulate(m, test, v, withRec) {
+  const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, terms: [{ C: m.C, g: m.g }], recovery: withRec ? { b: m.bs, r: m.rs } : null });
+  const prog = program(test, v);
+  // the reload target depends on the strain left after the rest: run in two parts
+  const i = prog.findIndex((s) => s.to[0] === 'RELOAD');
+  if (i < 0) return Hardening.run(mp, prog, { holdSteps: 600 });
+  const a = Hardening.run(mp, prog.slice(0, i), { holdSteps: 600 });
+  const seg = Object.assign({}, prog[i]); seg.to = [mp.Eps[0] + seg.reload, 0];
+  const b = Hardening.run(mp, [seg], { holdSteps: 600 });
+  return { hist: a.hist.concat(b.hist), ends: a.ends.concat(b.ends) };
+}
+UI.page({
+  mat, tests,
+  run(m, test, v) {
+    const rR = simulate(m, test, v, true), r0 = simulate(m, test, v, false);
+    const nR = 'With static recovery', n0 = 'Without recovery';
+    Plot.draw(p1, p1Tip, { xlabel: 'Time (s)', ylabel: 'Stress (MPa)', xzero: true,
+      series: [{ name: n0, pts: r0.hist.map((h) => [h.t, h.sig]), color: S1 },
+               { name: nR, pts: rR.hist.map((h) => [h.t, h.sig]), color: S2, dash: '7 4' }],
+      tip: (n, x, y) => `${n}: t ${Math.round(x)} s, σ ${Math.round(y)} MPa` });
+    Plot.draw(p2, p2Tip, { xlabel: 'Time (s)', ylabel: 'Uniaxial back stress X (MPa)', xzero: true,
+      series: [{ name: n0, pts: r0.hist.map((h) => [h.t, h.X[0][0]]), color: S1 },
+               { name: nR, pts: rR.hist.map((h) => [h.t, h.X[0][0]]), color: S2, dash: '7 4' }],
+      tip: (n, x, y) => `${n}: t ${Math.round(x)} s, X ${Math.round(y)} MPa` });
+    Plot.draw(p3, p3Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+      series: [{ name: n0, pts: r0.hist.map((h) => [100 * h.eps, h.sig]), color: S1 },
+               { name: nR, pts: rR.hist.map((h) => [100 * h.eps, h.sig]), color: S2, dash: '7 4' }],
+      tip: (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa` });
+    const statsEl = document.getElementById('stats');
+    const E = rR.ends, E0 = r0.ends;
+    if (test === 'hold') UI.stats(statsEl, [
+      { label: 'Stress before hold', value: `${Math.round(E[0].sig)} MPa` },
+      { label: 'Stress after hold', value: `${Math.round(E[1].sig)} MPa` },
+      { label: 'Back stress after hold', value: `${Math.round(E[1].X[0][0])} MPa (was ${Math.round(E[0].X[0][0])})` }]);
+    else if (test === 'rest') {
+      const ys = (r) => { const h = r.hist, k = h.findIndex((s, j) => j > 0 && h[j - 1].p < s.p - 1e-9 && s.t > r.ends[2].t); return k > 0 ? h[k].sig : NaN; };
+      UI.stats(statsEl, [
+        { label: 'Back stress after rest', value: `${Math.round(E[2].X[0][0])} MPa (was ${Math.round(E[1].X[0][0])})` },
+        { label: 'Reyield stress, with recovery', value: `${Math.round(ys(rR))} MPa` },
+        { label: 'Reyield stress, without', value: `${Math.round(ys(r0))} MPa` }]);
+    } else {
+      const pk = (r) => r.ends.filter((e) => e.label === 'up' || e.label === 'load').map((e) => e.sig);
+      const dw = (r) => r.ends.filter((e) => e.label === 'dwell+').map((e) => e.sig);
+      const a = pk(rR), b = pk(r0), da = dw(rR), db = dw(r0);
+      const n = a.length - 1, nd = da.length - 1;
+      UI.stats(statsEl, [
+        { label: 'Peak stress, last cycle (with / without recovery)', value: `${Math.round(a[n])} / ${Math.round(b[n])} MPa` },
+        { label: 'Stress at the end of the last dwell (with / without)', value: `${Math.round(da[nd])} / ${Math.round(db[nd])} MPa` },
+        { label: 'Relaxation during the last dwell', value: `${Math.round(a[n] - da[nd])} MPa` }]);
+    }
+  },
+});
+
+</script>
+</body>
+</html>

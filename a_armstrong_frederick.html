@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Armstrong–Frederick model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">A · Nonlinear kinematic hardening</p>
+  <h1>Armstrong–Frederick model (1966)</h1>
+  <p class="lede">One back stress with a hardening term and a recall term, plus optional Voce isotropic hardening. Run a monotonic test, strain-controlled cycles or stress-controlled cycles, and watch the back stress saturate, the Bauschinger effect appear and the strain ratchet under a mean stress.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress–strain curve</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      d<span class="t">X</span> = <sup>2</sup>&frasl;<sub>3</sub> C d<span class="t">ε</span><sup>p</sup> − γ <span class="t">X</span> dp
+      &nbsp;&nbsp;&nbsp;&nbsp; f = J(<span class="t">σ</span> − <span class="t">X</span>) − (σ<sub>y</sub> + R) ≤ 0
+      &nbsp;&nbsp;&nbsp;&nbsp; R = Q (1 − e<sup>−b p</sup>)
+    </div>
+    <ul>
+      <li><b>Hardening term</b> <span class="eq">⅔ C dε<sup>p</sup></span>: pushes the back stress along the plastic flow. C is the initial slope (MPa).</li>
+      <li><b>Recall term</b> <span class="eq">−γ X dp</span>: pulls the back stress back towards zero, in proportion to X and to the accumulated plastic strain dp. γ sets how fast X saturates at C/γ.</li>
+      <li><b>Voce term</b> R: the elastic domain grows from σ<sub>y</sub> to σ<sub>y</sub> + Q. Set Q = 0 for pure kinematic hardening.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Monotonic test.</b> The uniaxial back stress follows X = (C/γ)(1 − e<sup>−γ ε<sup>p</sup></sup>) and reaches 95 % of its saturation at ε<sup>p</sup> ≈ 3/γ.</p>
+    <p><b>Strain cycles.</b> Reverse yielding starts long before −σ<sub>max</sub> (Bauschinger effect). With a mean strain, the mean stress relaxes towards zero, because the recall term acts in both directions.</p>
+    <p><b>Stress cycles.</b> With a non-zero mean stress and a stress range larger than 2(σ<sub>y</sub> + Q), the loops do not close and the strain ratchets at a constant rate per cycle. Once R has saturated, the rate is
+      <span class="eq">δε<sup>p</sup> = (1/γ) ln[((C/γ)² − (σ<sub>min</sub> + k)²) / ((C/γ)² − (σ<sub>max</sub> − k)²)]</span> with k = σ<sub>y</sub> + Q.
+      If the range is smaller, the elastic domain grows until it covers the cycle and the strain stops (shakedown). A single Armstrong–Frederick term strongly overestimates ratcheting compared with real materials.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3 = UI.color('--s3'), INK2 = UI.color('--ink2');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 250, gt: 0 },
+  { id: 'C', label: 'C', name: 'C', unit: 'MPa', value: 80000, min: 0 },
+  { id: 'g', label: 'γ', name: 'γ', unit: '–', value: 50, min: 0 },
+  { id: 'Q', label: 'Q (Voce)', name: 'Q', unit: 'MPa', value: 300, min: 0 },
+  { id: 'b', label: 'b (Voce)', name: 'b', unit: '–', value: 60, min: 0 },
+];
+const tests = {
+  stress: { label: 'Stress-controlled cycles (ratcheting)', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 800 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -500 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 100, min: 1, max: 500 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+  strain: { label: 'Strain-controlled cycles', desc: 'Cycles of amplitude εa around a mean strain εm.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 1.0, gt: 0, max: 10 },
+           { id: 'em', label: 'ε<sub>m</sub>', name: 'εm', unit: '%', value: 0.5, min: -10, max: 10 },
+           { id: 'Ns', label: 'Cycles', name: 'Cycles', unit: '', value: 50, min: 1, max: 500 }] },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 5, gt: 0, max: 30 }] },
+};
+function capacity(m) { return m.g > 0 ? m.sy + m.Q + m.C / m.g : Infinity; }
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (test === 'stress') {
+      const cap = capacity(m);
+      if (Math.max(v.smax, -v.smin) >= 0.98 * cap) return `The peak stress must stay below σy + Q + C/γ = ${Math.round(cap)} MPa, otherwise the material cannot carry it.`;
+    }
+    return null;
+  },
+  run(m, test, v) {
+    const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, Q: m.Q, b: m.b, terms: [{ C: m.C, g: m.g }] });
+    const P = Hardening.programs;
+    const sat = m.g > 0 ? m.C / m.g : Infinity;
+    const statsEl = document.getElementById('stats');
+    if (test === 'mono') {
+      const r = Hardening.run(mp, P.tension(v.emax / 100));
+      Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', xzero: true,
+        series: [{ name: 'σ', pts: r.hist.map(h => [100 * h.eps, h.sig]), color: S1 }],
+        hlines: isFinite(sat) ? [{ y: m.sy + m.Q + sat, label: 'σy + Q + C/γ' }] : [], tip: tipSE });
+      p2Cap.textContent = 'Back stress X and isotropic hardening R against plastic strain';
+      Plot.draw(p2, p2Tip, { xlabel: 'Plastic strain (%)', ylabel: 'MPa', xzero: true,
+        series: [{ name: 'Back stress X', pts: r.hist.map(h => [100 * h.epsp, h.X[0][0]]), color: S2 },
+                 { name: 'Isotropic hardening R', pts: r.hist.map(h => [100 * h.epsp, h.R]), color: S3, dash: '6 4' }],
+        hlines: isFinite(sat) ? [{ y: sat, label: 'C/γ' }] : [],
+        tip: (n, x, y) => `${n}: εp ${x.toFixed(3)} %, ${Math.round(y)} MPa` });
+      const e = r.ends[0];
+      UI.stats(statsEl, [{ label: 'Final stress', value: `${Math.round(e.sig)} MPa` },
+        { label: 'Back stress X', value: `${Math.round(e.X[0][0])} MPa` },
+        { label: 'Saturation C/γ', value: isFinite(sat) ? `${Math.round(sat)} MPa` : 'none (γ = 0)' }]);
+    } else if (test === 'strain') {
+      const ea = v.ea / 100, em = v.em / 100;
+      const r = Hardening.run(mp, P.strainCycles(em + ea, em - ea, Math.round(v.Ns)));
+      Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'σ', pts: r.hist.map(h => [100 * h.eps, h.sig]), color: S1 }], tip: tipSE });
+      const mx = UI.peaks(r.ends, 'max', 'sig').slice(1), mn = UI.peaks(r.ends, 'min', 'sig');
+      const n = Math.min(mx.length, mn.length);
+      const idx = [...Array(n).keys()];
+      p2Cap.textContent = 'Peak and mean stress per cycle';
+      Plot.draw(p2, p2Tip, { xlabel: 'Cycle', ylabel: 'Stress (MPa)', xzero: false,
+        series: [{ name: 'σ max', pts: idx.map(i => [i + 1, mx[i]]), color: S1 },
+                 { name: 'σ min', pts: idx.map(i => [i + 1, mn[i]]), color: S2 },
+                 { name: 'Mean stress', pts: idx.map(i => [i + 1, 0.5 * (mx[i] + mn[i])]), color: S3, dash: '6 4' }],
+        tip: (nm, x, y) => `${nm}, cycle ${x}: ${Math.round(y)} MPa` });
+      UI.stats(statsEl, [{ label: 'Mean stress, cycle 1', value: `${Math.round(0.5 * (mx[0] + mn[0]))} MPa` },
+        { label: `Mean stress, cycle ${n}`, value: `${Math.round(0.5 * (mx[n - 1] + mn[n - 1]))} MPa` },
+        { label: 'Stress range, last cycle', value: `${Math.round(mx[n - 1] - mn[n - 1])} MPa` }]);
+    } else {
+      const N = Math.round(v.N);
+      const r = Hardening.run(mp, P.stressCycles(v.smax, v.smin, N), { stressStep: 1 });
+      Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'σ', pts: r.hist.map(h => [100 * h.eps, h.sig]), color: S1 }], tip: tipSE });
+      const mx = UI.peaks(r.ends, 'max', 'eps'), mn = UI.peaks(r.ends, 'min', 'eps');
+      p2Cap.textContent = 'Ratcheting: strain at the peaks of each cycle';
+      Plot.draw(p2, p2Tip, { xlabel: 'Cycle', ylabel: 'Strain (%)', yzero: true,
+        series: [{ name: 'At σ max', pts: mx.map((e, i) => [i + 1, 100 * e]), color: S1 },
+                 { name: 'At σ min', pts: mn.map((e, i) => [i + 1, 100 * e]), color: S2 }],
+        tip: (nm, x, y) => `${nm}, cycle ${x}: ε ${y.toFixed(3)} %` });
+      const rate = N > 1 ? 100 * (mx[N - 1] - mx[N - 2]) : NaN;
+      const k = m.sy + (m.b > 0 ? m.Q : 0), a = sat;
+      let analytic = '—';
+      if (isFinite(a) && v.smax - v.smin > 2 * k) {
+        const r1 = (a * a - (v.smin + k) ** 2) / (a * a - (v.smax - k) ** 2);
+        analytic = `${UI.fix(100 * Math.log(r1) / m.g, 4)} %/cycle`;
+      } else if (v.smax - v.smin <= 2 * k) analytic = '0 (shakedown)';
+      UI.stats(statsEl, [{ label: 'Strain at σ max, last cycle', value: `${(100 * mx[N - 1]).toFixed(2)} %` },
+        { label: 'Ratcheting rate, last cycle', value: isFinite(rate) ? `${UI.fix(rate, 4)} %/cycle` : '—' },
+        { label: 'Steady rate (formula)', value: analytic }]);
+    }
+  },
+});
+
+</script>
+</body>
+</html>

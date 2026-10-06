@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bari–Hassan model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">E3 · Models designed for ratcheting</p>
+  <h1>Bari–Hassan (2000, 2002)</h1>
+  <p class="lede">A three-term Chaboche model in which every back stress uses the Delobelle recall, with an optional threshold on the last term. δ′ controls multiaxial ratcheting, the threshold controls uniaxial ratcheting. Each run compares it with the plain Chaboche model.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Ratcheting</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Ratcheting"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Third plot</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Third plot"></svg><div class="tip" id="p3Tip"></div></div>
+      <div id="surf"></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      <span class="t">X</span> = Σ<sub>i</sub> <span class="t">X</span><sub>i</sub>
+      &nbsp;&nbsp;&nbsp;&nbsp; d<span class="t">X</span><sub>i</sub> = <sup>2</sup>&frasl;<sub>3</sub> C<sub>i</sub> d<span class="t">ε</span><sup>p</sup> − γ<sub>i</sub> [ δ′ <span class="t">X</span><sub>i</sub> + (1 − δ′)(<span class="t">X</span><sub>i</sub> : <span class="t">n̄</span>) <span class="t">n̄</span> ] dp<br>
+      last term with threshold: the recall of <span class="t">X</span><sub>3</sub> is multiplied by ⟨J(<span class="t">X</span><sub>3</sub>) − X̄<sub>l</sub>⟩ / J(<span class="t">X</span><sub>3</sub>)
+    </div>
+    <ul>
+      <li>The three terms describe the loop shape, as in Chaboche (B).</li>
+      <li>δ′ is the Delobelle weight (E2): it acts only when the back stress is not aligned with the flow, i.e. under multiaxial or non-proportional loading.</li>
+      <li>X̄<sub>l</sub> is the Chaboche threshold (C): it acts in uniaxial loading too. X̄<sub>l</sub> = 0 gives the pure Chaboche–Delobelle combination.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Axial stress + cyclic shear.</b> δ′ &lt; 1 reduces axial ratcheting compared with Chaboche. Bari and Hassan tune δ′ on a biaxial test and the other parameters on uniaxial tests.</p>
+    <p><b>Uniaxial stress cycles.</b> With X̄<sub>l</sub> = 0 the two curves coincide, because δ′ has no effect in uniaxial loading. Set a threshold (for example 150 MPa, below C<sub>3</sub>/γ<sub>3</sub>) to reduce uniaxial ratcheting as well.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/surface.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const COLS = ['--s1', '--s2', '--s3', '--s4'].map(UI.color);
+const DASH = [null, '7 4', '2 4', '10 3 2 3'];
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'C1', label: 'C<sub>1</sub>', name: 'C1', unit: 'MPa', value: 100000, min: 0 },
+  { id: 'g1', label: 'γ<sub>1</sub>', name: 'γ1', unit: '–', value: 1000, min: 0 },
+  { id: 'C2', label: 'C<sub>2</sub>', name: 'C2', unit: 'MPa', value: 20000, min: 0 },
+  { id: 'g2', label: 'γ<sub>2</sub>', name: 'γ2', unit: '–', value: 200, min: 0 },
+  { id: 'C3', label: 'C<sub>3</sub>', name: 'C3', unit: 'MPa', value: 2000, gt: 0 },
+  { id: 'g3', label: 'γ<sub>3</sub>', name: 'γ3', unit: '–', value: 10, gt: 0 },
+  { id: 'dp', label: 'δ′', name: 'δ′', unit: '–', value: 0.3, min: 0, max: 1 },
+  { id: 'Xl', label: 'Threshold X̄<sub>l</sub>', name: 'X̄l', unit: 'MPa', value: 0, min: 0 },
+];
+const models = (m) => [
+  { name: 'Chaboche', terms: [{ C: m.C1, g: m.g1 }, { C: m.C2, g: m.g2 }, { C: m.C3, g: m.g3 }] },
+  { name: `Bari–Hassan (δ′ = ${m.dp}, X̄l = ${m.Xl} MPa)`, terms: [{ C: m.C1, g: m.g1, delta: m.dp }, { C: m.C2, g: m.g2, delta: m.dp }, { C: m.C3, g: m.g3, delta: m.dp, Xl: m.Xl }] },
+];
+const tests = {
+  tt: { label: 'Axial stress + cyclic shear strain', desc: 'Thin-walled tube: constant axial stress σ0, then symmetric shear strain cycles ±γa (multiaxial ratcheting test).',
+    spec: [{ id: 's0', label: 'σ<sub>0</sub> (axial)', name: 'σ0', unit: 'MPa', value: 100 },
+           { id: 'ga', label: 'γ<sub>a</sub> (shear)', name: 'γa', unit: '%', value: 0.6, gt: 0, max: 10 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 30, min: 1, max: 300 }] },
+  uni: { label: 'Uniaxial stress cycles', desc: 'Cycles between σmax and σmin, starting in tension (uniaxial ratcheting test).',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 420 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -250 },
+           { id: 'Nu', label: 'Cycles', name: 'Cycles', unit: '', value: 100, min: 1, max: 300 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+};
+const surf = Surface.mount(document.getElementById('surf'));
+const capacity = (terms, sy) => terms.reduce((s, t) => s + (t.g > 0 ? t.C / t.g : Infinity), sy);
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    const extra = (m.Xl >= m.C3 / m.g3 ? `X̄l must be below C3/γ3 = ${Math.round(m.C3 / m.g3)} MPa.` : null);
+    if (extra) return extra;
+    const cap = Math.min(...models(m).map((md) => capacity(md.terms, m.sy)));
+    if (test === 'uni' && Math.max(v.smax, -v.smin) >= 0.98 * cap) return `The peak stress must stay below σy + Σ C/γ = ${Math.round(cap)} MPa.`;
+    if (test === 'tt' && Math.abs(v.s0) >= 0.9 * cap) return `The axial stress must stay well below σy + Σ C/γ = ${Math.round(cap)} MPa.`;
+    return null;
+  },
+  run(m, test, v) {
+    const P = Hardening.programs;
+    const res = models(m).map((md, k) => {
+      const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, terms: md.terms });
+      const r = test === 'tt'
+        ? Hardening.run(mp, P.tensionTorsion(v.s0, v.ga / 100, Math.round(v.N)), { strainStep: 2e-5, stressStep: 1, maxPoints: 5000 })
+        : Hardening.run(mp, P.stressCycles(v.smax, v.smin, Math.round(v.Nu)), { stressStep: 1, maxPoints: 5000 });
+      return { name: md.name, r, color: COLS[k], dash: DASH[k] };
+    });
+    const peaksEps = (r) => r.ends.filter((e) => e.label === 'max').map((e) => 100 * e.eps);
+    const box3 = p3.parentNode;
+    if (test === 'tt') {
+      box3.style.display = '';
+      p1Cap.textContent = 'Axial ratcheting: axial strain at +γa in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Axial strain (%)', yzero: true,
+        series: res.map((o) => ({ name: o.name, pts: peaksEps(o.r).map((e, i) => [i + 1, e]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ε ${y.toFixed(3)} %` });
+      p2Cap.textContent = 'Strain path: axial strain against shear strain';
+      Plot.draw(p2, p2Tip, { xlabel: 'Shear strain γ (%)', ylabel: 'Axial strain ε (%)', yzero: true,
+        series: res.map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [100 * h.gam, 100 * h.eps]), color: o.color, dash: o.dash, width: 1 })),
+        tip: (n, x, y) => `${n}: γ ${x.toFixed(3)} %, ε ${y.toFixed(3)} %` });
+      p3Cap.textContent = 'Shear stress–shear strain loops';
+      Plot.draw(p3, p3Tip, { xlabel: 'Shear strain γ (%)', ylabel: 'Shear stress τ (MPa)',
+        series: res.map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [100 * h.gam, h.tau]), color: o.color, dash: o.dash, width: 1.5 })),
+        tip: (n, x, y) => `${n}: γ ${x.toFixed(3)} %, τ ${Math.round(y)} MPa` });
+    } else {
+      box3.style.display = 'none';
+      p1Cap.textContent = 'Uniaxial ratcheting: strain at σmax in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: res.map((o) => ({ name: o.name, pts: peaksEps(o.r).map((e, i) => [i + 1, e]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ε ${y.toFixed(3)} %` });
+      p2Cap.textContent = 'Stress–strain curves';
+      Plot.draw(p2, p2Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: res.map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [100 * h.eps, h.sig]), color: o.color, dash: o.dash, width: 1.5 })),
+        tip: (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa` });
+    }
+    surf.update(res.map((o) => ({ name: o.name, r: o.r, color: o.color })), m.sy, 1);
+    UI.stats(document.getElementById('stats'), res.map((o) => {
+      const e = peaksEps(o.r), n = e.length;
+      const rate = n > 1 ? (e[n - 1] - e[n - 2]) : NaN;
+      return { label: `${o.name}: final strain, last-cycle rate`, value: `${e[n - 1].toFixed(2)} %, ${isFinite(rate) ? UI.fix(rate, 3) : '—'} %/cyc` };
+    }));
+  },
+});
+
+</script>
+</body>
+</html>

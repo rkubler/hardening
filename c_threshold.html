@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaboche threshold model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">C · Ratcheting and mean stress relaxation</p>
+  <h1>Threshold model (Chaboche, 1991)</h1>
+  <p class="lede">A three-term Chaboche model where the recall of the last back stress only acts above a threshold X̄<sub>l</sub>. Each run compares it with the same model without threshold, under stress cycles (ratcheting) or strain cycles with a mean strain (mean stress relaxation).</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Comparison per cycle</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Comparison per cycle"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Norm of the last back stress at each peak</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Norm of the last back stress at each peak"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Stress–strain curve of the threshold model</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Stress–strain curve of the threshold model"></svg><div class="tip" id="p3Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      d<span class="t">X</span><sub>i</sub> = <sup>2</sup>&frasl;<sub>3</sub> C<sub>i</sub> d<span class="t">ε</span><sup>p</sup> − γ<sub>i</sub> <span class="t">X</span><sub>i</sub> dp &nbsp;&nbsp;(i = 1, 2)<br>
+      d<span class="t">X</span><sub>3</sub> = <sup>2</sup>&frasl;<sub>3</sub> C<sub>3</sub> d<span class="t">ε</span><sup>p</sup> − γ<sub>3</sub> ⟨J(<span class="t">X</span><sub>3</sub>) − X̄<sub>l</sub>⟩ <span class="t">X</span><sub>3</sub>/J(<span class="t">X</span><sub>3</sub>) dp
+    </div>
+    <ul>
+      <li>⟨x⟩ = max(x, 0) is the Macaulay bracket. While J(X<sub>3</sub>) &lt; X̄<sub>l</sub>, the third term has no recall and hardens linearly, like Prager.</li>
+      <li>X<sub>3</sub>/J(X<sub>3</sub>) is the unit direction of X<sub>3</sub>: above the threshold, the recall grows as J(X<sub>3</sub>) − X̄<sub>l</sub>.</li>
+      <li>X̄<sub>l</sub> must be below C<sub>3</sub>/γ<sub>3</sub>, otherwise the recall never acts. X̄<sub>l</sub> = 0 gives the standard Chaboche model.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Ratcheting.</b> Without threshold, the strain grows at a constant rate per cycle. With the threshold, the norm of X<sub>3</sub> stays below X̄<sub>l</sub> (second plot), so its recall never acts: the third term hardens linearly, like Prager. After a few cycles the loops close and ratcheting stops (shakedown). If you lower X̄<sub>l</sub> below the level that J(X<sub>3</sub>) reaches, the recall switches on and ratcheting continues, more slowly.</p>
+    <p><b>Mean stress relaxation.</b> Without threshold the mean stress relaxes to zero. With the threshold it stops at a plateau whose level is set by X̄<sub>l</sub>: this is the model to choose when residual stresses stabilize at a non-zero value.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), INK2 = UI.color('--ink2');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'sy', label: 'σ<sub>y</sub>', name: 'σy', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'C1', label: 'C<sub>1</sub>', name: 'C1', unit: 'MPa', value: 100000, min: 0 },
+  { id: 'g1', label: 'γ<sub>1</sub>', name: 'γ1', unit: '–', value: 1000, min: 0 },
+  { id: 'C2', label: 'C<sub>2</sub>', name: 'C2', unit: 'MPa', value: 20000, min: 0 },
+  { id: 'g2', label: 'γ<sub>2</sub>', name: 'γ2', unit: '–', value: 200, min: 0 },
+  { id: 'C3', label: 'C<sub>3</sub>', name: 'C3', unit: 'MPa', value: 2000, gt: 0 },
+  { id: 'g3', label: 'γ<sub>3</sub>', name: 'γ3', unit: '–', value: 10, gt: 0 },
+  { id: 'Xl', label: 'Threshold X̄<sub>l</sub>', name: 'X̄l', unit: 'MPa', value: 150, min: 0 },
+];
+const tests = {
+  ratchet: { label: 'Ratcheting (stress control)', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 450 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -250 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 200, min: 1, max: 500 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+  relax: { label: 'Mean stress relaxation (strain control)', desc: 'Strain cycles between εmax and εmin after a first loading to εmax.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 0.65 },
+           { id: 'emin', label: 'ε<sub>min</sub>', name: 'εmin', unit: '%', value: 0.15 },
+           { id: 'Nr', label: 'Cycles', name: 'Cycles', unit: '', value: 200, min: 1, max: 500 }],
+    check: (v) => v.emax <= v.emin ? 'εmax must be greater than εmin.' : null },
+};
+const makeTerms = (m, Xl) => [{ C: m.C1, g: m.g1 }, { C: m.C2, g: m.g2 }, { C: m.C3, g: m.g3, Xl }];
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (m.Xl >= m.C3 / m.g3) return `X̄l must be below C3/γ3 = ${Math.round(m.C3 / m.g3)} MPa, otherwise the recall of X3 never acts.`;
+    if (test === 'ratchet') {
+      const cap = m.sy + makeTerms(m, 0).reduce((s, t) => s + (t.g > 0 ? t.C / t.g : Infinity), 0);
+      if (Math.max(v.smax, -v.smin) >= 0.98 * cap) return `The peak stress must stay below σy + Σ C/γ = ${Math.round(cap)} MPa.`;
+    }
+    return null;
+  },
+  run(m, test, v) {
+    const P = Hardening.programs;
+    const sim = (Xl) => {
+      const mp = new Hardening.MaterialPoint({ E: m.E, sy: m.sy, terms: makeTerms(m, Xl) });
+      return test === 'ratchet'
+        ? Hardening.run(mp, P.stressCycles(v.smax, v.smin, Math.round(v.N)), { stressStep: 1 })
+        : Hardening.run(mp, P.strainCycles(v.emax / 100, v.emin / 100, Math.round(v.Nr)));
+    };
+    const rT = sim(m.Xl), rC = sim(0);
+    const nT = `Threshold, X̄l = ${m.Xl} MPa`, nC = 'Chaboche, no threshold';
+    const statsEl = document.getElementById('stats');
+    if (test === 'ratchet') {
+      const eT = UI.peaks(rT.ends, 'max', 'eps'), eC = UI.peaks(rC.ends, 'max', 'eps');
+      p1Cap.textContent = 'Ratcheting: strain at σmax in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: [{ name: nC, pts: eC.map((e, i) => [i + 1, 100 * e]), color: S1 },
+                 { name: nT, pts: eT.map((e, i) => [i + 1, 100 * e]), color: S2, dash: '7 4' }],
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(3)} %` });
+      const N = eT.length;
+      UI.stats(statsEl, [{ label: 'Chaboche, last-cycle rate', value: N > 1 ? `${UI.fix(100 * (eC[N - 1] - eC[N - 2]), 4)} %/cycle` : '—' },
+        { label: 'Threshold, last-cycle rate', value: N > 1 ? `${UI.fix(100 * (eT[N - 1] - eT[N - 2]), 4)} %/cycle` : '—' },
+        { label: 'Threshold, final strain', value: `${(100 * eT[N - 1]).toFixed(2)} %` }]);
+    } else {
+      const mean = (r) => { const mx = UI.peaks(r.ends, 'max', 'sig'), mn = UI.peaks(r.ends, 'min', 'sig'); return mn.map((s, i) => 0.5 * (s + mx[i])); };
+      const mT = mean(rT), mC = mean(rC);
+      p1Cap.textContent = 'Mean stress in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Mean stress (MPa)', yzero: true,
+        series: [{ name: nC, pts: mC.map((s, i) => [i + 1, s]), color: S1 },
+                 { name: nT, pts: mT.map((s, i) => [i + 1, s]), color: S2, dash: '7 4' }],
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(1)} MPa` });
+      const N = mT.length;
+      UI.stats(statsEl, [{ label: 'Mean stress, cycle 1', value: `${Math.round(mT[0])} MPa` },
+        { label: `Chaboche, cycle ${N}`, value: `${mC[N - 1].toFixed(1)} MPa` },
+        { label: `Threshold, cycle ${N}`, value: `${mT[N - 1].toFixed(1)} MPa` }]);
+    }
+    const j3 = (r) => r.ends.filter((e) => e.label === 'max' || e.label === 'min').map((e) => Hardening.Jn(e.X[2]));
+    const jT = j3(rT), jC = j3(rC);
+    Plot.draw(p2, p2Tip, { xlabel: 'Cycle', ylabel: 'J(X₃) (MPa)', yzero: true,
+      series: [{ name: nC, pts: jC.map((j, i) => [1 + i / 2, j]), color: S1 },
+               { name: nT, pts: jT.map((j, i) => [1 + i / 2, j]), color: S2, dash: '7 4' }],
+      hlines: [{ y: m.Xl, label: 'X̄l' }], tip: (n, x, y) => `${n}, cycle ${Math.floor(x)}: ${Math.round(y)} MPa` });
+    Plot.draw(p3, p3Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+      series: [{ name: 'σ', pts: rT.hist.map((h) => [100 * h.eps, h.sig]), color: S2 }], tip: tipSE });
+  },
+});
+
+</script>
+</body>
+</html>
