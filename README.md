@@ -63,7 +63,7 @@ Plastic flow is rate independent; the static recovery simulator adds time depend
 Dr Régis Kubler, Arts et Métiers Institute of Technology.
 Developed with the assistance of Claude Opus 5.5 (Anthropic), October 2026.
 ## Cite as
-[Regis KUBLER] (2026). Hardening Simulator. Zenodo. DOI: 
+[Regis KUBLER] (2026). Hardening Simulator. Zenodo. DOI: https://doi.org/10.5281/zenodo.23205497
 
 ## Licence
 
