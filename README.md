@@ -3,7 +3,7 @@
 Interactive simulators of the cyclic hardening of metals, written for teaching.
 Each simulator is an HTML page that runs entirely in the browser: no installation is needed.
 
-**Open the simulators:** https://YOUR-USERNAME.github.io/hardening-simulators/
+**Open the simulators:** https://rkubler.github.io/hardening/
 
 ## Simulators
 
@@ -82,6 +82,8 @@ Plastic flow is rate independent; the static recovery simulator adds time depend
 Dr Régis Kubler, Arts et Métiers Institute of Technology.
 Developed with the assistance of Claude Opus 5.5 (Anthropic), October 2026.
 
+## Cite as
+Kubler, R. (2026). *Hardening Simulator*. Arts et Métiers Institute of Technology. Zenodo. DOI: https://doi.org/10.5281/zenodo.23205497
 ## Licence
 
 - **Code** (HTML, CSS and JavaScript): MIT licence, see `LICENSE`.
