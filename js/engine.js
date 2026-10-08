@@ -16,6 +16,12 @@
  *            δ = 0 → Burlet–Cailletaud; 0 < δ < 1 → Delobelle (Bari–Hassan when several terms)
  *   'ow'   : dX = γ [2/3 r dεp − w ⟨dεp : k⟩ X],  r = C/γ, k = X/J(X)
  *            w = H(J(X) − r) (model I) or (J(X)/r)^m (model II)
+ *   'ako'  : Abdel-Karim–Ohno: dX = γ [2/3 r dεp − μ X dp − H(J(X) − r) ⟨dεp : k − μ dp⟩ X]
+ *            μ = 0 → Ohno–Wang I; μ = 1 → Armstrong–Frederick
+ *   'js'   : Jiang–Sehitoglu: dX = c r [n̄ − (‖X‖/r)^(χ+1) X/‖X‖] dq, dq = ‖dεp‖ = √(3/2) dp,
+ *            entered with Chaboche-like C, γ: r = √(2/3) C/γ, c = C/(1.5 r) (χ = 0 → Armstrong–Frederick)
+ *   'cjk'  : Chen–Jiao–Kim: dX = γ [2/3 r dεp − (J(X)/r)^m X ⟨dεp : k⟩^χ dp^(1−χ)]
+ *            χ = 1 → Ohno–Wang II
  * Optional static recovery: dX = − b_s J(X)^(r_s − 1) X dt (all terms).
  * Optional Voce isotropic hardening: R = Q (1 − exp(−b p)).
  *
@@ -35,6 +41,32 @@
     if (g <= 0) return out;
     const xb = Jn(X);
     if (xb <= 1e-12) return out;
+    if (t.rule === "ako") {
+      const r = C / g, mu = t.mu || 0;
+      const q = dot(n, X) / xb; // n : k
+      const above = xb >= r ? Math.max(q - mu, 0) : 0;
+      out[0] -= g * (mu + above) * X[0];
+      out[1] -= g * (mu + above) * X[1];
+      return out;
+    }
+    if (t.rule === "js") {
+      const r = Math.sqrt(2 / 3) * C / g, c = C / (1.5 * r), chi = t.chi || 0;
+      const norm = Math.sqrt(dot(X, X)); // Euclidean norm ‖X‖
+      if (norm <= 1e-12) return out;
+      const f = c * r * Math.sqrt(1.5) * Math.pow(norm / r, chi + 1) / norm;
+      out[0] -= f * X[0];
+      out[1] -= f * X[1];
+      return out;
+    }
+    if (t.rule === "cjk") {
+      const r = C / g, chi = t.chi === undefined ? 1 : t.chi;
+      const q = dot(n, X) / xb;
+      const fac = q > 0 ? Math.pow(q, chi) : 0;
+      const w = Math.pow(xb / r, t.m);
+      out[0] -= g * w * fac * X[0];
+      out[1] -= g * w * fac * X[1];
+      return out;
+    }
     if (t.rule === "ow") {
       const r = C / g;
       const w = t.model === 1 ? (xb >= r ? 1 : 0) : Math.pow(xb / r, t.m);

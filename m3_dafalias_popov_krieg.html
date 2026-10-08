@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dafalias–Popov and Krieg two-surface model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">M3 · Multisurface and two-surface models</p>
+  <h1>Dafalias–Popov (1975) and Krieg (1975) two-surface model</h1>
+  <p class="lede">A yield surface moves inside a bounding surface. The plastic modulus depends on the distance δ between the stress and the bounding surface: very stiff just after yielding, it decreases smoothly to the bounding modulus when the two surfaces touch. Two ways of normalising δ are compared: the Dafalias–Popov rule, reset at each reversal, and a fixed reference in the spirit of Krieg.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress–strain curve</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Surfaces during loading</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Surfaces during loading"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Third plot</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Third plot"></svg><div class="tip" id="p3Tip"></div></div>
+
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations (uniaxial form)</h2>
+    <div class="eqblock">
+      |σ − α| ≤ k &nbsp;&nbsp;(yield surface) &nbsp;&nbsp;&nbsp;&nbsp; |σ<sub>B</sub> − β| = K &nbsp;&nbsp;(bounding surface) &nbsp;&nbsp;&nbsp;&nbsp;
+      dσ = H dε<sup>p</sup>, &nbsp; H = H<sub>0</sub> + h δ / (δ<sub>in</sub> − δ)
+    </div>
+    <ul>
+      <li><b>Yield surface</b> of size k, centred on α. In uniaxial loading its centre simply follows the stress: α = σ − k during tensile flow.</li>
+      <li><b>Bounding surface</b> of size K &gt; k, centred on β. It hardens linearly with the bounding modulus H<sub>0</sub>: dβ = H<sub>0</sub> dε<sup>p</sup>. The stress can never cross it.</li>
+      <li><b>Distance</b> δ = |σ<sub>B</sub> − σ|, where σ<sub>B</sub> = β ± K is the image point on the bounding surface in the direction of loading.</li>
+      <li><b>Plastic modulus</b>: H tends to H<sub>0</sub> when δ → 0, and is infinite when δ = δ<sub>in</sub>. The shape parameter h sets how fast the curve approaches the bound.</li>
+      <li><b>Dafalias–Popov</b>: δ<sub>in</sub> is the value of δ at the start of each plastic loading in a new direction, so every reverse branch starts with an infinite modulus and a smooth elastic–plastic transition.</li>
+      <li><b>Krieg-type variant</b>: δ<sub>in</sub> = 2(K − k), fixed, so H depends only on the current distance δ. Krieg (1975) used a limit surface and a loading surface with a plastic modulus interpolated from the distance between them; this fixed-reference form is a simple uniaxial version of that idea, not his exact equations.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Monotonic test and strain cycles.</b> Both versions give a smooth elastic–plastic transition with very few parameters, and the cyclic curves are close to measured ones. A mean strain gives a mean stress that relaxes slowly.</p>
+    <p><b>Partial unloading and reloading.</b> This is the known weakness of the Dafalias–Popov rule. After a small reverse plastic excursion, δ<sub>in</sub> is reset to a small value. On reloading the model is again very stiff and the reloading curve <em>overshoots</em> the curve it would have followed without the excursion (positive values in the third plot). With a fixed reference, the modulus is the same function of δ before and after, so there is no overshoot. Later two-surface models keep a memory of the earlier loading to avoid it.</p>
+    <p><b>Stress cycles.</b> Both versions ratchet under a mean stress. The amount depends strongly on h and on the δ<sub>in</sub> rule, which is why ratcheting was later improved with nonlinear kinematic rules for the bounding surface.</p>
+    <p class="note">The original model is multiaxial: σ<sub>B</sub> is found with the radial (Mróz-type) mapping rule and the yield surface translates along σ<sub>B</sub> − σ. In uniaxial loading these rules reduce to the ones above.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/engine1d.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3 = UI.color('--s3'), S4 = UI.color('--s4'), INK2 = UI.color('--ink2');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'k', label: 'k (yield)', name: 'k', unit: 'MPa', value: 150, gt: 0 },
+  { id: 'K', label: 'K (bound)', name: 'K', unit: 'MPa', value: 350, gt: 0 },
+  { id: 'H0', label: 'H<sub>0</sub>', name: 'H0', unit: 'MPa', value: 2000, min: 0 },
+  { id: 'h', label: 'h (shape)', name: 'h', unit: 'MPa', value: 50000, gt: 0 },
+];
+const tests = {
+  partial: { label: 'Partial unloading and reloading', desc: 'Tension to ε1, unloading by Δε, then reloading to ε2.',
+    spec: [{ id: 'e1', label: 'ε<sub>1</sub>', name: 'ε1', unit: '%', value: 0.6, gt: 0, max: 5 },
+           { id: 'de', label: 'Δε (unloading)', name: 'Δε', unit: '%', value: 0.16, gt: 0, max: 5 },
+           { id: 'e2', label: 'ε<sub>2</sub>', name: 'ε2', unit: '%', value: 2, gt: 0, max: 10 }],
+    check: (v) => v.e2 <= v.e1 ? 'ε2 must be greater than ε1.' : null },
+  strain: { label: 'Strain-controlled cycles', desc: 'Cycles of amplitude εa around a mean strain εm.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 0.6, gt: 0, max: 5 },
+           { id: 'em', label: 'ε<sub>m</sub>', name: 'εm', unit: '%', value: 0.3, min: -5, max: 5 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 20, min: 1, max: 200 }] },
+  stress: { label: 'Stress-controlled cycles (ratcheting)', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 340 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -220 },
+           { id: 'Ns', label: 'Cycles', name: 'Cycles', unit: '', value: 30, min: 1, max: 300 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 2, gt: 0, max: 10 }] },
+};
+const VARS = [{ v: 'dp', name: 'Dafalias–Popov', color: S1 }, { v: 'fixed', name: 'Krieg-type (fixed δin)', color: S2, dash: '6 4' }];
+function interp(h, e) {
+  for (let i = 1; i < h.length; i++) { const a = h[i - 1], b = h[i]; if ((a.eps - e) * (b.eps - e) <= 0 && a.eps !== b.eps) return a.sig + (b.sig - a.sig) * (e - a.eps) / (b.eps - a.eps); }
+  return NaN;
+}
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (m.K <= m.k) return 'The bounding surface must be larger than the yield surface (K > k).';
+    if (test === 'stress' && m.H0 === 0 && Math.max(v.smax, -v.smin) >= 0.98 * m.K) return 'With H0 = 0 the peak stress must stay below K.';
+    return null;
+  },
+  run(m, test, v) {
+    const P = Hardening1D.programs, statsEl = $('stats');
+    const mk = (variant) => new Hardening1D.TwoSurface({ E: m.E, k: m.k, K: m.K, H0: m.H0, h: m.h, variant });
+    const prog = test === 'mono' ? P.tension(v.emax / 100)
+      : test === 'partial' ? [{ ctrl: 'eps', to: v.e1 / 100, label: 'max' }, { ctrl: 'eps', to: (v.e1 - v.de) / 100, label: 'min' }, { ctrl: 'eps', to: v.e2 / 100, label: 'max' }]
+      : test === 'strain' ? P.strainCycles((v.em + v.ea) / 100, (v.em - v.ea) / 100, Math.round(v.N))
+      : P.stressCycles(v.smax, v.smin, Math.round(v.Ns));
+    const res = VARS.map((o) => Object.assign({ r: Hardening1D.run1d(mk(o.v), prog, { stressStep: 1 }) }, o));
+    const series = res.map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [100 * h.eps, h.sig]), color: o.color, dash: o.dash }));
+    let monos;
+    if (test === 'partial') {
+      monos = VARS.map((o) => Hardening1D.run1d(mk(o.v), P.tension(v.e2 / 100)).hist);
+      series.push({ name: 'Monotonic (Dafalias–Popov)', pts: monos[0].map((h) => [100 * h.eps, h.sig]), color: INK2, dash: '2 3' });
+    }
+    p1Cap.textContent = 'Stress–strain curve';
+    Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', series, tip: tipSE });
+
+    // surfaces of the Dafalias–Popov version
+    const h0 = res[0].r.hist;
+    p2Cap.textContent = 'Dafalias–Popov: stress, yield surface α ± k and bounding surface β ± K';
+    Plot.draw(p2, p2Tip, { xlabel: 'Loading step', ylabel: 'Stress (MPa)',
+      series: [{ name: 'Bounding surface β ± K', pts: h0.map((h) => [h.step, h.b + h.K]), color: S3 },
+               { name: 'Bounding surface β − K', noLegend: true, pts: h0.map((h) => [h.step, h.b - h.K]), color: S3 },
+               { name: 'Yield surface α ± k', pts: h0.map((h) => [h.step, h.a + h.k]), color: S2, dash: '6 4' },
+               { name: 'Yield surface α − k', noLegend: true, pts: h0.map((h) => [h.step, h.a - h.k]), color: S2, dash: '6 4' },
+               { name: 'Stress σ', pts: h0.map((h) => [h.step, h.sig]), color: S1 }],
+      tip: (n, x, y) => `${n}, step ${x}: ${Math.round(y)} MPa` });
+
+    if (test === 'partial') {
+      const after = res.map((o) => o.r.hist.filter((h) => h.step > o.r.ends[1].step && h.eps >= v.e1 / 100 - 1e-9));
+      const diff = after.map((a, k) => a.map((h) => [100 * h.eps, h.sig - interp(monos[k], h.eps)]).filter((p) => isFinite(p[1])));
+      p3Cap.textContent = 'Reloading curve minus monotonic curve beyond ε1 (overshoot when positive)';
+      Plot.draw(p3, p3Tip, { xlabel: 'Strain (%)', ylabel: 'Δσ (MPa)',
+        series: res.map((o, k) => ({ name: o.name, pts: diff[k], color: o.color, dash: o.dash })), hlines: [{ y: 0, label: '' }],
+        tip: (n, x, y) => `${n}: ε ${x.toFixed(3)} %, Δσ ${y.toFixed(1)} MPa` });
+      UI.stats(statsEl, res.map((o, k) => ({ label: `${o.name}: largest overshoot`, value: `${Math.max(0, ...diff[k].map((p) => p[1])).toFixed(1)} MPa` }))
+        .concat([{ label: 'Reverse plastic strain (Dafalias–Popov)', value: `${UI.fix(100 * (res[0].r.ends[0].epsp - res[0].r.ends[1].epsp), 4)} %` }]));
+    } else if (test === 'mono') {
+      p3Cap.textContent = 'Distance δ from the stress to the bounding surface';
+      Plot.draw(p3, p3Tip, { xlabel: 'Strain (%)', ylabel: 'δ (MPa)', yzero: true,
+        series: res.map((o) => ({ name: o.name, pts: o.r.hist.filter((h) => isFinite(h.delta)).map((h) => [100 * h.eps, h.delta]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}: ε ${x.toFixed(3)} %, δ ${y.toFixed(1)} MPa` });
+      UI.stats(statsEl, res.map((o) => ({ label: `${o.name}: final stress`, value: `${Math.round(o.r.ends[0].sig)} MPa` })));
+    } else if (test === 'strain') {
+      const mean = res.map((o) => { const mx = UI.peaks(o.r.ends, 'max', 'sig').slice(1), mn = UI.peaks(o.r.ends, 'min', 'sig'); return mn.map((s, i) => 0.5 * (s + mx[i])); });
+      p3Cap.textContent = 'Mean stress in each cycle';
+      Plot.draw(p3, p3Tip, { xlabel: 'Cycle', ylabel: 'Mean stress (MPa)', yzero: true,
+        series: res.map((o, k) => ({ name: o.name, pts: mean[k].map((s, i) => [i + 1, s]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(1)} MPa` });
+      UI.stats(statsEl, res.map((o, k) => ({ label: `${o.name}: mean stress, cycles 1 and ${mean[k].length}`, value: `${Math.round(mean[k][0])} → ${mean[k][mean[k].length - 1].toFixed(1)} MPa` })));
+    } else {
+      const per = res.map((o) => UI.peaks(o.r.ends, 'max', 'eps').map((e) => 100 * e));
+      p3Cap.textContent = 'Ratcheting: strain at σmax in each cycle';
+      Plot.draw(p3, p3Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: res.map((o, k) => ({ name: o.name, pts: per[k].map((e, i) => [i + 1, e]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(3)} %` });
+      UI.stats(statsEl, res.map((o, k) => { const e = per[k], n = e.length;
+        return { label: `${o.name}: final strain, last-cycle rate`, value: `${e[n - 1].toFixed(2)} %, ${n > 1 ? UI.fix(e[n - 1] - e[n - 2], 4) : '—'} %/cyc` }; }));
+    }
+  },
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hashiguchi subloading surface model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">M5 · Multisurface and two-surface models</p>
+  <h1>Hashiguchi subloading surface model (1989)</h1>
+  <p class="lede">There is no purely elastic domain. The stress always lies on a subloading surface, similar to the normal-yield surface and smaller by the ratio R. Plastic strain develops as soon as R grows, slowly when R is small and faster as R approaches 1. The result is a smooth elastic–plastic transition and plastic strain even in cycles below the yield stress. Three versions are compared.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Surfaces during loading</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Surfaces during loading"></svg><div class="tip" id="p3Tip"></div></div>
+
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations (uniaxial form)</h2>
+    <div class="eqblock">
+      |σ − ᾱ| = R F &nbsp;&nbsp;(subloading surface) &nbsp;&nbsp;&nbsp;&nbsp; |σ − α| ≤ F &nbsp;&nbsp;(normal-yield surface) &nbsp;&nbsp;&nbsp;&nbsp; ᾱ = s − R (s − α)<br>
+      dR = U dp, &nbsp; U = −u ln R &nbsp;&nbsp;&nbsp;&nbsp;
+      dα = (C ν − γ α) dp &nbsp;&nbsp;&nbsp;&nbsp;
+      ds = dα + c (σ<sub>c</sub> − s) dp, &nbsp; σ<sub>c</sub> = α + ν F
+    </div>
+    <ul>
+      <li><b>Normal-yield surface</b> of size F, centred on α, with Armstrong–Frederick kinematic hardening (C, γ). It plays the role of the usual yield surface.</li>
+      <li><b>Similarity centre</b> s: the subloading surface is the image of the normal-yield surface in a homothety of centre s and ratio R, so its centre is ᾱ = s − R(s − α). The stress is always on it.</li>
+      <li><b>Normal-yield ratio</b> R (0 ≤ R ≤ 1): R = 0 when σ = s, R = 1 when the stress is on the normal-yield surface. During loading R grows with dR = U dp; the function U = −u ln R is infinite at R = 0 and zero at R = 1, so R tends to 1 smoothly. u sets how quickly the curve reaches the normal-yield surface.</li>
+      <li><b>Loading criterion</b>: plastic flow occurs whenever R increases; when R decreases the response is elastic. There is no elastic domain of finite size.</li>
+      <li><b>c</b>: moves the similarity centre towards the conjugate point σ<sub>c</sub> on the normal-yield surface, so that it follows the loading. With c = 0, s moves with α only.</li>
+      <li><b>Plastic modulus</b>: differentiating σ = s + R (σ<sub>c</sub> − s) gives dσ/dp = ds/dp + U (σ<sub>c</sub> − s) + R (dα/dp − ds/dp). The first two terms make the response very stiff when R is small.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Monotonic test.</b> The subloading curves leave the elastic line gradually, instead of with a sharp yield point at F. All curves meet at large strain, when R ≈ 1, where the model behaves like Armstrong–Frederick.</p>
+    <p><b>Stress cycles below the yield stress.</b> With σmax &lt; F the conventional Armstrong–Frederick model stays elastic. The subloading model gives open loops and a slow ratcheting strain, as many metals show in high-cycle tests. Moving the similarity centre (c &gt; 0) reduces the accumulated strain.</p>
+    <p><b>Stress cycles above the yield stress.</b> The subloading model ratchets more than the conventional model, because plastic strain also develops in the part of each cycle where the conventional model is elastic. In the original model this ratcheting is often too large; later extensions of the subloading model were proposed to reduce it.</p>
+    <p><b>Strain cycles.</b> The loops are rounded at both ends and R oscillates below 1 after each reversal.</p>
+    <p class="note">This is a uniaxial version of the model, with the similarity centre rule written as ds = dα + c (σ<sub>c</sub> − s) dp. Hashiguchi’s full multiaxial formulation also includes isotropic hardening of F, the norm of the plastic strain rate and a constraint that keeps s inside the normal-yield surface; the equations above keep its structure in uniaxial loading without isotropic hardening. Parameters are illustrative.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/engine1d.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3 = UI.color('--s3'), S4 = UI.color('--s4'), INK2 = UI.color('--ink2');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'F', label: 'F (normal yield)', name: 'F', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'C', label: 'C', name: 'C', unit: 'MPa', value: 20000, min: 0 },
+  { id: 'g', label: 'γ', name: 'γ', unit: '–', value: 100, gt: 0 },
+  { id: 'u', label: 'u', name: 'u', unit: '–', value: 1000, gt: 0 },
+  { id: 'c', label: 'c (similarity centre)', name: 'c', unit: '–', value: 100, min: 0 },
+];
+const tests = {
+  low: { label: 'Stress cycles below the yield stress', desc: 'Cycles between σmax and σmin, both inside the normal-yield surface.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 150 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -50 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 100, min: 1, max: 300 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+  high: { label: 'Stress cycles above the yield stress', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax2', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 280 },
+           { id: 'smin2', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -80 },
+           { id: 'N2', label: 'Cycles', name: 'Cycles', unit: '', value: 30, min: 1, max: 300 }],
+    check: (v) => v.smax2 <= v.smin2 ? 'σmax must be greater than σmin.' : null },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 2, gt: 0, max: 10 }] },
+  strain: { label: 'Strain-controlled cycles', desc: 'Symmetric cycles of amplitude εa.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 0.4, gt: 0, max: 5 },
+           { id: 'Ne', label: 'Cycles', name: 'Cycles', unit: '', value: 5, min: 1, max: 100 }] },
+};
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    const cap = m.F + m.C / m.g;
+    if (test === 'low' && Math.max(v.smax, -v.smin) >= m.F) return `For this test σmax and |σmin| must stay below F = ${m.F} MPa.`;
+    if (test === 'high' && Math.max(v.smax2, -v.smin2) >= 0.98 * cap) return `The peak stress must stay below F + C/γ = ${Math.round(cap)} MPa.`;
+    return null;
+  },
+  run(m, test, v) {
+    const P1 = Hardening1D.programs, P = Hardening.programs, statsEl = $('stats');
+    const sub = (c) => new Hardening1D.Subloading({ E: m.E, F: m.F, C: m.C, g: m.g, u: m.u, c });
+    const N = Math.round(test === 'low' ? v.N : test === 'high' ? v.N2 : v.Ne || 1);
+    const p1d = test === 'mono' ? P1.tension(v.emax / 100) : test === 'strain' ? P1.strainCycles(v.ea / 100, -v.ea / 100, N)
+      : test === 'low' ? P1.stressCycles(v.smax, v.smin, N) : P1.stressCycles(v.smax2, v.smin2, N);
+    const pAF = test === 'mono' ? P.tension(v.emax / 100) : test === 'strain' ? P.strainCycles(v.ea / 100, -v.ea / 100, N)
+      : test === 'low' ? P.stressCycles(v.smax, v.smin, N) : P.stressCycles(v.smax2, v.smin2, N);
+    const res = [
+      { name: `Subloading, c = ${m.c}`, color: S1, r: Hardening1D.run1d(sub(m.c), p1d, { stressStep: 1 }) },
+      { name: 'Subloading, c = 0', color: S2, dash: '6 4', r: Hardening1D.run1d(sub(0), p1d, { stressStep: 1 }) },
+      { name: 'Conventional Armstrong–Frederick', color: INK2, dash: '2 3',
+        r: Hardening.run(new Hardening.MaterialPoint({ E: m.E, sy: m.F, terms: [{ C: m.C, g: m.g }] }), pAF, { strainStep: 2e-5, stressStep: 1 }) },
+    ];
+    const main = res[0], H = main.r.hist;
+    if (test === 'low' || test === 'high') {
+      const per = res.map((o) => UI.peaks(o.r.ends, 'max', 'eps').map((e) => 100 * e));
+      p1Cap.textContent = 'Ratcheting: strain at σmax in each cycle';
+      Plot.draw(p1, p1Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: res.map((o, k) => ({ name: o.name, pts: per[k].map((e, i) => [i + 1, e]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}, cycle ${x}: ${y.toFixed(4)} %` });
+      p2Cap.textContent = `Stress–strain curve: ${main.name}`;
+      Plot.draw(p2, p2Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', series: [{ name: main.name, pts: H.map((h) => [100 * h.eps, h.sig]), color: S1 }], tip: tipSE });
+      UI.stats(statsEl, res.map((o, k) => { const e = per[k], n = e.length;
+        return { label: `${o.name}: strain at σmax, last-cycle rate`, value: `${e[n - 1].toFixed(3)} %, ${n > 1 ? UI.fix(e[n - 1] - e[n - 2], 5) : '—'} %/cyc` }; }));
+    } else {
+      p1Cap.textContent = 'Stress–strain curve';
+      Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: res.map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [100 * h.eps, h.sig]), color: o.color, dash: o.dash })), tip: tipSE });
+      p2Cap.textContent = 'Normal-yield ratio R (1 = on the normal-yield surface)';
+      Plot.draw(p2, p2Tip, { xlabel: test === 'mono' ? 'Strain (%)' : 'Loading step', ylabel: 'R', ydomain: [0, 1.05],
+        series: res.slice(0, 2).map((o) => ({ name: o.name, pts: o.r.hist.map((h) => [test === 'mono' ? 100 * h.eps : h.step, h.R]), color: o.color, dash: o.dash })),
+        tip: (n, x, y) => `${n}: ${x.toFixed(test === 'mono' ? 3 : 0)}, R ${y.toFixed(3)}` });
+      const at = (hist, e) => hist.reduce((a, h) => Math.abs(h.eps - e) < Math.abs(a.eps - e) ? h : a);
+      if (test === 'mono') {
+        const e0 = 0.6 * m.F / m.E;
+        UI.stats(statsEl, res.map((o) => ({ label: `${o.name}: σ at ε = ${UI.fix(100 * 2 * e0, 3)} % / final`,
+          value: `${Math.round(at(o.r.hist, 2 * e0).sig)} / ${Math.round(o.r.ends[o.r.ends.length - 1].sig)} MPa` })));
+      } else {
+        UI.stats(statsEl, res.map((o) => { const mx = UI.peaks(o.r.ends, 'max', 'sig'); return { label: `${o.name}: σ max, last cycle`, value: `${Math.round(mx[mx.length - 1])} MPa` }; }));
+      }
+    }
+    p3Cap.textContent = `${main.name}: stress, normal-yield surface α ± F, subloading surface ᾱ ± RF and similarity centre s`;
+    Plot.draw(p3, p3Tip, { xlabel: 'Loading step', ylabel: 'Stress (MPa)',
+      series: [{ name: 'Normal-yield surface α ± F', pts: H.map((h) => [h.step, h.a + h.F]), color: S3 },
+               { name: 'Normal-yield surface α − F', noLegend: true, pts: H.map((h) => [h.step, h.a - h.F]), color: S3 },
+               { name: 'Subloading surface ᾱ ± RF', pts: H.map((h) => [h.step, h.abar + h.rF]), color: S2, dash: '6 4' },
+               { name: 'Subloading surface ᾱ − RF', noLegend: true, pts: H.map((h) => [h.step, h.abar - h.rF]), color: S2, dash: '6 4' },
+               { name: 'Similarity centre s', pts: H.map((h) => [h.step, h.sc]), color: S4, dash: '2 3' },
+               { name: 'Stress σ', pts: H.map((h) => [h.step, h.sig]), color: S1 }],
+      tip: (n, x, y) => `${n}, step ${x}: ${Math.round(y)} MPa` });
+  },
+});
+
+</script>
+</body>
+</html>

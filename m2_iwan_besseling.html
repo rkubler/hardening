@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iwan and Besseling overlay model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">M2 · Multisurface and two-surface models</p>
+  <h1>Iwan (1967) and Besseling (1958) overlay model</h1>
+  <p class="lede">The material is a set of elastic–perfectly plastic elements loaded in parallel, all with the same strain. Each element yields at its own stress, so the stress–strain curve is piecewise linear. Watch the elements yield one after the other, the loops follow Masing's rule and the material remember the past loading after an inner loop.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress–strain curve</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Stress in each element</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Stress in each element"></svg><div class="tip" id="p2Tip"></div></div>
+
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ = Σ<sub>k</sub> w<sub>k</sub> σ<sub>k</sub> &nbsp;&nbsp;&nbsp;&nbsp;
+      σ<sub>k</sub> = E (ε − ε<sup>p</sup><sub>k</sub>), &nbsp; |σ<sub>k</sub>| ≤ σ<sub>y,k</sub> &nbsp;&nbsp;&nbsp;&nbsp;
+      Σ<sub>k</sub> w<sub>k</sub> = 1
+    </div>
+    <ul>
+      <li><b>Elements</b> (Besseling's sub-volumes, Iwan's spring–slider units): each one has the same Young's modulus E, a yield stress σ<sub>y,k</sub> and a volume fraction w<sub>k</sub>. All elements see the same total strain ε.</li>
+      <li><b>Yielding</b>: element k is elastic while |σ<sub>k</sub>| &lt; σ<sub>y,k</sub> and then carries a constant stress ±σ<sub>y,k</sub> (perfect plasticity).</li>
+      <li><b>Tangent modulus</b>: when elements 1 to j have yielded, the slope is E (1 − w<sub>1</sub> − … − w<sub>j</sub>). The stress is bounded by Σ w<sub>k</sub> σ<sub>y,k</sub>.</li>
+    </ul>
+    <p>Iwan (1967) described the same idea in two equivalent ways: springs and sliders in parallel, or nested yield surfaces as in Mróz's model. Besseling (1958) wrote it as a material made of sub-volumes with different yield stresses. In uniaxial loading the overlay model and the Mróz model give exactly the same curves when they share the same monotonic curve: the element yield stresses play the role of the surface sizes.</p>
+    <h2>What to look for</h2>
+    <p><b>Monotonic test.</b> One kink each time an element yields. The dashed line is the limit stress Σ w<sub>k</sub> σ<sub>y,k</sub>.</p>
+    <p><b>Strain cycles.</b> On reversal every element unloads elastically, so reverse yielding starts after a stress drop of 2σ<sub>y,1</sub>: the Bauschinger effect comes from the residual stresses between elements, not from a back stress variable. The dashed curve is Masing's prediction σ = σ<sub>min</sub> + 2 f((ε − ε<sub>min</sub>)/2), where f is the monotonic curve: it lies on top of the loop, because the overlay model obeys Masing's rule exactly. With a mean strain, the mean stress is set during the first cycle and then stays constant: there is no progressive relaxation. It drops to zero only if the amplitude is large enough to make every element yield in both directions.</p>
+    <p><b>Memory path.</b> After an inner loop, the curve goes back exactly to the point where the loop started and then continues as if the loop had not happened (the memory rule used in rainflow counting).</p>
+    <p><b>Stress cycles.</b> Once the first cycle is done, the loop closes and the strain at σ<sub>max</sub> stays constant: the model cannot predict ratcheting or mean stress relaxation, and it has no cyclic hardening or softening. These limits led to the two-surface and nonlinear kinematic models (M3–M5, A–E).</p>
+    <p class="note">The model here is uniaxial. In multiaxial loading the overlay model also gives a reasonable response under non-proportional paths, because each element has its own von Mises surface.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/engine1d.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+
+const COLS = [UI.color('--s1'), UI.color('--s2'), UI.color('--s3'), UI.color('--s4')], INK2 = UI.color('--ink2'), PATH = UI.color('--path');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+  { id: 'y1', label: 'σ<sub>y,1</sub>', name: 'σy,1', unit: 'MPa', value: 200, gt: 0 },
+  { id: 'w1', label: 'w<sub>1</sub>', name: 'w1', unit: '–', value: 0.6, min: 0, max: 1 },
+  { id: 'y2', label: 'σ<sub>y,2</sub>', name: 'σy,2', unit: 'MPa', value: 350, gt: 0 },
+  { id: 'w2', label: 'w<sub>2</sub>', name: 'w2', unit: '–', value: 0.2, min: 0, max: 1 },
+  { id: 'y3', label: 'σ<sub>y,3</sub>', name: 'σy,3', unit: 'MPa', value: 600, gt: 0 },
+  { id: 'w3', label: 'w<sub>3</sub>', name: 'w3', unit: '–', value: 0.12, min: 0, max: 1 },
+  { id: 'y4', label: 'σ<sub>y,4</sub>', name: 'σy,4', unit: 'MPa', value: 1200, gt: 0 },
+  { id: 'w4', label: 'w<sub>4</sub>', name: 'w4', unit: '–', value: 0.08, min: 0, max: 1 },
+];
+const tests = {
+  strain: { label: 'Strain-controlled cycles', desc: 'Cycles of amplitude εa around a mean strain εm, compared with Masing’s rule.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 0.4, gt: 0, max: 5 },
+           { id: 'em', label: 'ε<sub>m</sub>', name: 'εm', unit: '%', value: 0.2, min: -5, max: 5 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 3, min: 1, max: 100 }] },
+  memory: { label: 'Inner loop and memory', desc: 'Strain path through the points listed (in %): two inner loops, then a larger strain.',
+    spec: [{ id: 'path', label: 'Strain points', name: 'Strain points', unit: '%', value: '0.9, 0.1, 0.6, 0.1, 0.6, 1.2', text: true }] },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 1.5, gt: 0, max: 10 }] },
+  stress: { label: 'Stress-controlled cycles', desc: 'Cycles between σmax and σmin, starting in tension.',
+    spec: [{ id: 'smax', label: 'σ<sub>max</sub>', name: 'σmax', unit: 'MPa', value: 300 },
+           { id: 'smin', label: 'σ<sub>min</sub>', name: 'σmin', unit: 'MPa', value: -150 },
+           { id: 'Ns', label: 'Cycles', name: 'Cycles', unit: '', value: 20, min: 1, max: 200 }],
+    check: (v) => v.smax <= v.smin ? 'σmax must be greater than σmin.' : null },
+};
+const props = (m) => ({ E: m.E, sy: [m.y1, m.y2, m.y3, m.y4], w: [m.w1, m.w2, m.w3, m.w4] });
+const limit = (pp) => pp.sy.reduce((s, y, k) => s + pp.w[k] * y, 0);
+const mono = (pp, x) => Math.sign(x) * pp.sy.reduce((s, y, k) => s + pp.w[k] * Math.min(pp.E * Math.abs(x), y), 0);
+function parsePath(str) {
+  const pts = String(str).split(/[,;\s]+/).filter((t) => t !== '').map(Number);
+  if (pts.length < 2 || pts.some((x) => !isFinite(x) || Math.abs(x) > 10)) return null;
+  return pts;
+}
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    const pp = props(m), sw = pp.w.reduce((a, b) => a + b, 0);
+    if (Math.abs(sw - 1) > 0.005) return `The weights must add up to 1 (now ${sw.toFixed(3)}).`;
+    for (let k = 1; k < 4; k++) if (pp.sy[k] < pp.sy[k - 1]) return 'Give the yield stresses in increasing order.';
+    if (test === 'stress' && Math.max(v.smax, -v.smin) >= 0.98 * limit(pp)) return `The peak stress must stay below Σ w σy = ${Math.round(limit(pp))} MPa.`;
+    if (test === 'memory' && !parsePath(v.path)) return 'Give at least two strain points in %, separated by commas, each between −10 and 10.';
+    return null;
+  },
+  run(m, test, v) {
+    const pp = props(m), md = new Hardening1D.Overlay(pp), P = Hardening1D.programs;
+    const statsEl = $('stats'), lim = limit(pp);
+    let r;
+    if (test === 'mono') r = Hardening1D.run1d(md, P.tension(v.emax / 100));
+    else if (test === 'strain') r = Hardening1D.run1d(md, P.strainCycles((v.em + v.ea) / 100, (v.em - v.ea) / 100, Math.round(v.N)));
+    else if (test === 'memory') r = Hardening1D.run1d(md, P.path(parsePath(v.path).map((x) => x / 100)));
+    else r = Hardening1D.run1d(md, P.stressCycles(v.smax, v.smin, Math.round(v.Ns)), { stressStep: 1 });
+    const series = [{ name: 'Overlay model', pts: r.hist.map((h) => [100 * h.eps, h.sig]), color: COLS[0] }];
+    if (test === 'strain') {
+      const eMin = (v.em - v.ea) / 100, sMin = UI.peaks(r.ends, 'min', 'sig')[0], pts = [];
+      for (let i = 0; i <= 200; i++) { const e = eMin + 2 * v.ea / 100 * i / 200; pts.push([100 * e, sMin + 2 * mono(pp, (e - eMin) / 2)]); }
+      series.push({ name: 'Masing: σmin + 2f((ε − εmin)/2)', pts, color: INK2, dash: '6 4' });
+    }
+    p1Cap.textContent = 'Stress–strain curve';
+    Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', series, tip: tipSE,
+      hlines: [{ y: lim, label: 'Σ w σy' }, { y: -lim, label: '' }] });
+    if (test === 'stress') {
+      const mx = UI.peaks(r.ends, 'max', 'eps');
+      p2Cap.textContent = 'Strain at σmax in each cycle';
+      Plot.draw(p2, p2Tip, { xlabel: 'Cycle', ylabel: 'Strain at σmax (%)', yzero: true,
+        series: [{ name: 'Strain at σmax', pts: mx.map((e, i) => [i + 1, 100 * e]), color: COLS[0] }],
+        tip: (n, x, y) => `Cycle ${x}: ${y.toFixed(4)} %` });
+      const n = mx.length;
+      UI.stats(statsEl, [{ label: 'Strain at σmax, cycle 1', value: `${(100 * mx[0]).toFixed(3)} %` },
+        { label: `Strain at σmax, cycle ${n}`, value: `${(100 * mx[n - 1]).toFixed(3)} %` },
+        { label: 'Ratcheting rate, last cycle', value: n > 1 ? `${UI.fix(100 * (mx[n - 1] - mx[n - 2]), 4)} %/cycle` : '—' }]);
+    } else {
+      p2Cap.textContent = 'Stress in each element σk (all elements have the same strain)';
+      Plot.draw(p2, p2Tip, { xlabel: 'Strain (%)', ylabel: 'Element stress σk (MPa)',
+        series: pp.sy.map((y, k) => ({ name: `Element ${k + 1} (σy = ${y})`, pts: r.hist.map((h) => [100 * h.eps, h.sk[k]]), color: COLS[k], dash: k % 2 ? '6 4' : null })),
+        tip: (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σk ${Math.round(y)} MPa` });
+      const last = r.ends[r.ends.length - 1], yielded = last.sk.filter((s, k) => Math.abs(s) >= pp.sy[k] - 1e-6).length;
+      if (test === 'strain') {
+        const mx = UI.peaks(r.ends, 'max', 'sig'), mn = UI.peaks(r.ends, 'min', 'sig'), n = mn.length;
+        UI.stats(statsEl, [{ label: 'Mean stress, cycle 1', value: `${Math.round(0.5 * (mx[1] + mn[0]))} MPa` },
+          { label: `Mean stress, cycle ${n}`, value: `${Math.round(0.5 * (mx[n] + mn[n - 1]))} MPa` },
+          { label: 'Stress range', value: `${Math.round(mx[n] - mn[n - 1])} MPa` }]);
+      } else {
+        UI.stats(statsEl, [{ label: 'Final stress', value: `${Math.round(last.sig)} MPa` },
+          { label: 'Elements at yield at the end', value: `${yielded} of 4` },
+          { label: 'Limit stress Σ w σy', value: `${Math.round(lim)} MPa` }]);
+      }
+    }
+  },
+});
+
+</script>
+</body>
+</html>

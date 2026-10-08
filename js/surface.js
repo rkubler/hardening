@@ -47,24 +47,34 @@
       const h = md.r.hist, n = h.length;
       const i = Math.round((+slider.value / 1000) * (n - 1));
       const cur = h[i];
-      const Xs = cur.X.reduce((s, x) => [s[0] + x[0], s[1] + x[1]], [0, 0]);
+      const custom = typeof md.shape === "function";
+      const cen = (s) => custom ? s.cen : (() => { const X = s.X.reduce((t, x) => [t[0] + x[0], t[1] + x[1]], [0, 0]); return [X[0], S3 * X[1]]; })();
+      const C = cen(cur);
       const k = sy + (cur.R || 0);
-      const a1 = cur.sig - Xs[0], a2 = S3 * (cur.tau - Xs[1]);
+      const a1 = cur.sig - C[0], a2 = S3 * cur.tau - C[1];
       const J = Math.hypot(a1, a2) || 1;
       const plastic = i > 0 && cur.p > h[i - 1].p + 1e-12;
-      const dir = [a1 / J, a2 / J];
+      const dir = custom && cur.n ? cur.n : [a1 / J, a2 / J];
       // stress plane: domain over the whole history (stable while scrubbing)
       let b1 = [Infinity, -Infinity, Infinity, -Infinity];
-      h.forEach((s) => {
-        const X = s.X.reduce((t, x) => [t[0] + x[0], t[1] + x[1]], [0, 0]), r = sy + (s.R || 0);
-        b1 = [Math.min(b1[0], s.sig, X[0] - r), Math.max(b1[1], s.sig, X[0] + r), Math.min(b1[2], S3 * s.tau, S3 * X[1] - r), Math.max(b1[3], S3 * s.tau, S3 * X[1] + r)];
+      const grow = (x, y) => { b1 = [Math.min(b1[0], x), Math.max(b1[1], x), Math.min(b1[2], y), Math.max(b1[3], y)]; };
+      if (custom) {
+        const every = Math.max(1, Math.floor(n / 40));
+        h.forEach((s, j) => { grow(s.sig, S3 * s.tau); if (j % every === 0 || j === n - 1) md.shape(s, 48).forEach((q) => grow(q[0], q[1])); });
+        md.shape0.forEach((q) => grow(q[0], q[1]));
+      } else h.forEach((s) => {
+        const X = cen(s), r = sy + (s.R || 0);
+        grow(s.sig, S3 * s.tau); grow(X[0] - r, X[1] - r); grow(X[0] + r, X[1] + r);
       });
+      const poly = (pts, X, Y) => pts.map((q) => `${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(" ");
       square(ys, b1, md.color, (g, X, Y, sc) => {
-        el("circle", { cx: X(0), cy: Y(0), r: sy * sc, fill: "none", stroke: css("--ink2"), "stroke-width": 1, "stroke-dasharray": "4 4", opacity: 0.7 }, g);
+        if (custom) el("polygon", { points: poly(md.shape0, X, Y), fill: "none", stroke: css("--ink2"), "stroke-width": 1, "stroke-dasharray": "4 4", opacity: 0.7 }, g);
+        else el("circle", { cx: X(0), cy: Y(0), r: sy * sc, fill: "none", stroke: css("--ink2"), "stroke-width": 1, "stroke-dasharray": "4 4", opacity: 0.7 }, g);
         el("polyline", { points: h.map((s) => `${X(s.sig).toFixed(1)},${Y(S3 * s.tau).toFixed(1)}`).join(" "), fill: "none", stroke: css("--rule"), "stroke-width": 1 }, g);
         el("polyline", { points: h.slice(0, i + 1).map((s) => `${X(s.sig).toFixed(1)},${Y(S3 * s.tau).toFixed(1)}`).join(" "), fill: "none", stroke: css("--ink2"), "stroke-width": 1.2 }, g);
-        el("circle", { cx: X(Xs[0]), cy: Y(S3 * Xs[1]), r: k * sc, fill: md.color, "fill-opacity": 0.08, stroke: md.color, "stroke-width": 2.2 }, g);
-        const cx = X(Xs[0]), cy = Y(S3 * Xs[1]);
+        if (custom) el("polygon", { points: poly(md.shape(cur, 180), X, Y), fill: md.color, "fill-opacity": 0.08, stroke: md.color, "stroke-width": 2.2, "stroke-linejoin": "round" }, g);
+        else el("circle", { cx: X(C[0]), cy: Y(C[1]), r: k * sc, fill: md.color, "fill-opacity": 0.08, stroke: md.color, "stroke-width": 2.2 }, g);
+        const cx = X(C[0]), cy = Y(C[1]);
         el("path", { d: `M${cx - 5},${cy - 5}L${cx + 5},${cy + 5}M${cx - 5},${cy + 5}L${cx + 5},${cy - 5}`, stroke: md.color, "stroke-width": 2 }, g);
         el("line", { x1: X(0), y1: Y(0), x2: cx, y2: cy, stroke: md.color, "stroke-width": 1.2, "stroke-dasharray": "3 3" }, g);
         const px = X(cur.sig), py = Y(S3 * cur.tau);
@@ -157,7 +167,8 @@
         sel.innerHTML = list.map((m, i) => `<option value="${i}">${m.name}</option>`).join("");
         sel.value = prev && +prev < list.length ? prev : String(preferred === undefined ? list.length - 1 : preferred);
         slider.value = 1000;
-        key.innerHTML = "Dashed circle: initial yield surface. Coloured circle: current yield surface, centred on the back stress (×). " +
+        key.innerHTML = (list.some((m) => m.shape) ? "Dashed line: initial yield surface. Coloured line: current yield surface; × marks its centre (back stress). "
+          : "Dashed circle: initial yield surface. Coloured circle: current yield surface, centred on the back stress (×). ") +
           "The arrow is the outward normal at the stress point; the plastic strain increment follows the same direction in the right-hand plot. " +
           "Use the slider or Play to follow the loading history.";
         draw();

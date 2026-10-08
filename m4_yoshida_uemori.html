@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yoshida–Uemori model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">M4 · Multisurface and two-surface models</p>
+  <h1>Yoshida–Uemori model (2002)</h1>
+  <p class="lede">A two-surface model built for sheet metal forming and springback. The yield surface (size Y, constant) moves inside a bounding surface that hardens both kinematically and isotropically. It describes the three features of large-strain reverse loading: the transient Bauschinger effect, the permanent softening and the workhardening stagnation. The Young’s modulus can also decrease with plastic strain.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Stress–strain curve</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Surfaces during loading</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Surfaces during loading"></svg><div class="tip" id="p3Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p4Cap">Bounding surface centre and non-hardening region</p><div class="legend" id="p4Leg"></div><svg id="p4" role="img" aria-label="Bounding surface centre and non-hardening region"></svg><div class="tip" id="p4Tip"></div></div>
+
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations (uniaxial form)</h2>
+    <div class="eqblock">
+      |σ − α| = Y, &nbsp; α = β + α<sub>*</sub> &nbsp;&nbsp;&nbsp;&nbsp; |σ<sub>B</sub> − β| = B + R<br>
+      dα<sub>*</sub> = C [ a ν − √(a/|α<sub>*</sub>|) α<sub>*</sub> ] dp, &nbsp; a = B + R − Y &nbsp;&nbsp;&nbsp;&nbsp;
+      dβ = m (b ν − β) dp &nbsp;&nbsp;&nbsp;&nbsp; dR = m (R<sub>sat</sub> − R) dp
+    </div>
+    <ul>
+      <li><b>Yield surface</b> of constant size Y, centred on α. ν = ±1 is the direction of plastic flow.</li>
+      <li><b>Bounding surface</b> of size B + R, centred on β. α<sub>*</sub> = α − β is the position of the yield surface relative to the bounding surface; it saturates at a = B + R − Y, when the two surfaces touch.</li>
+      <li><b>C</b> controls how fast the yield surface reaches the bounding surface, so it sets the transient Bauschinger effect (the rounded reverse curve).</li>
+      <li><b>b, m</b>: the bounding surface centre β saturates at ±b at the rate m. After reversal β has to travel from +b to −b, and meanwhile R hardly grows (see below): the reverse curve stays below the monotonic one, which is the <b>permanent softening</b>.</li>
+      <li><b>R<sub>sat</sub>, m</b>: isotropic hardening of the bounding surface, applied only when β is outside the non-hardening region.</li>
+      <li><b>Non-hardening region</b> (in β space): an interval [q − r, q + r]. When β moves inside it, R does not grow: this is the <b>workhardening stagnation</b> seen in cyclic tests and after reversal. When β leaves it, the region expands (r) and translates (q); h (between 0 and 1) sets the share of expansion.</li>
+      <li><b>Young’s modulus</b>: E = E<sub>0</sub> − (E<sub>0</sub> − E<sub>a</sub>)(1 − e<sup>−ξ p</sup>), important for springback. Set ξ = 0 to keep E constant.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Forward–reverse test.</b> The second plot shows the reverse stress (sign changed) against the accumulated strain, next to the monotonic curve. Just after reversal the curve is rounded and much lower (transient Bauschinger effect, set by C). It then becomes parallel to the monotonic curve but stays below it (permanent softening, set by b). For a while the reverse curve is flat or nearly so: β crosses the non-hardening region and R does not grow (stagnation).</p>
+    <p><b>Strain cycles.</b> The peak stress grows during the first cycles and then stabilises at a value far below the monotonic curve at the same accumulated strain: once the non-hardening region covers the range of β, cyclic hardening stops. A larger strain amplitude restarts it.</p>
+    <p class="note">This is a uniaxial version. In the original multiaxial model the non-hardening region is a surface in β space, g(β) = |β − q| − r ≤ 0, whose expansion and translation follow the same rule with h; the uniaxial interval used here is its one-dimensional section. Parameters are illustrative, of the order of those reported for mild and high-strength steel sheets.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/engine1d.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+const p4 = $("p4"), p4Tip = $("p4Tip"), p4Cap = $("p4Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3 = UI.color('--s3'), S4 = UI.color('--s4'), INK2 = UI.color('--ink2');
+const tipSE = (n, x, y) => `${n}: ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa`;
+const mat = [
+  { id: 'E0', label: 'E<sub>0</sub>', name: 'E0', unit: 'MPa', value: 206000, gt: 0 },
+  { id: 'Ea', label: 'E<sub>a</sub>', name: 'Ea', unit: 'MPa', value: 170000, gt: 0 },
+  { id: 'xi', label: 'ξ', name: 'ξ', unit: '–', value: 50, min: 0 },
+  { id: 'Y', label: 'Y', name: 'Y', unit: 'MPa', value: 230, gt: 0 },
+  { id: 'B', label: 'B', name: 'B', unit: 'MPa', value: 350, gt: 0 },
+  { id: 'Rsat', label: 'R<sub>sat</sub>', name: 'Rsat', unit: 'MPa', value: 150, min: 0 },
+  { id: 'C', label: 'C', name: 'C', unit: '–', value: 250, gt: 0 },
+  { id: 'b', label: 'b', name: 'b', unit: 'MPa', value: 100, min: 0 },
+  { id: 'm', label: 'm', name: 'm', unit: '–', value: 12, gt: 0 },
+  { id: 'h', label: 'h', name: 'h', unit: '–', value: 0.5, min: 0, max: 1 },
+];
+const tests = {
+  reverse: { label: 'Forward–reverse loading (Bauschinger)', desc: 'Tension to the pre-strain εpre, then compression down to −εrev.',
+    spec: [{ id: 'epre', label: 'ε<sub>pre</sub>', name: 'εpre', unit: '%', value: 4, gt: 0, max: 20 },
+           { id: 'erev', label: 'ε<sub>rev</sub>', name: 'εrev', unit: '%', value: 4, min: -20, max: 20 }] },
+  strain: { label: 'Strain-controlled cycles', desc: 'Symmetric cycles of amplitude εa.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 1, gt: 0, max: 10 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 15, min: 1, max: 100 }] },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'emax', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 10, gt: 0, max: 30 }] },
+};
+UI.page({
+  mat, tests,
+  check: (m, test, v) => {
+    if (m.Ea > m.E0) return 'Ea should not be larger than E0.';
+    if (m.B <= m.Y) return 'The bounding surface must be larger than the yield surface (B > Y).';
+    if (test === 'reverse' && -v.erev >= v.epre) return 'εrev must be such that the strain goes back below εpre (−εrev < εpre).';
+    return null;
+  },
+  run(m, test, v) {
+    const P = Hardening1D.programs, statsEl = $('stats');
+    const mk = () => new Hardening1D.YoshidaUemori({ E0: m.E0, Ea: m.Ea, xi: m.xi, Y: m.Y, B: m.B, Rsat: m.Rsat, C: m.C, m: m.m, b: m.b, h: m.h });
+    const prog = test === 'mono' ? P.tension(v.emax / 100)
+      : test === 'reverse' ? [{ ctrl: 'eps', to: v.epre / 100, label: 'max' }, { ctrl: 'eps', to: -v.erev / 100, label: 'min' }]
+      : P.strainCycles(v.ea / 100, -v.ea / 100, Math.round(v.N));
+    const r = Hardening1D.run1d(mk(), prog), H = r.hist;
+    p1Cap.textContent = 'Stress–strain curve';
+    Plot.draw(p1, p1Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)', series: [{ name: 'σ', pts: H.map((h) => [100 * h.eps, h.sig]), color: S1 }], tip: tipSE });
+
+    if (test === 'reverse') {
+      const e1 = r.ends[0], epre = e1.eps;
+      const reach = epre + (epre + v.erev / 100);
+      const mono = Hardening1D.run1d(mk(), P.tension(reach)).hist;
+      const rev = H.filter((h) => h.step > e1.step).map((h) => [100 * (epre + (epre - h.eps)), -h.sig]);
+      p2Cap.textContent = 'Reverse curve (−σ) against accumulated strain, compared with the monotonic curve';
+      Plot.draw(p2, p2Tip, { xlabel: 'Accumulated strain εpre + |ε − εpre| (%)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'Monotonic', pts: mono.map((h) => [100 * h.eps, h.sig]), color: INK2, dash: '6 4' },
+                 { name: 'Forward (σ)', pts: H.filter((h) => h.step <= e1.step).map((h) => [100 * h.eps, h.sig]), color: S1 },
+                 { name: 'Reverse (−σ)', pts: rev.filter((p) => p[1] >= 0), color: S2 }],
+        tip: (n, x, y) => `${n}: ${x.toFixed(3)} %, ${Math.round(y)} MPa` });
+      const at = (arr, x) => { let b = arr[0]; for (const p of arr) if (Math.abs(p[0] - x) < Math.abs(b[0] - x)) b = p; return b[1]; };
+      const monoPts = mono.map((h) => [100 * h.eps, h.sig]), xEnd = rev[rev.length - 1][0];
+      UI.stats(statsEl, [{ label: 'Stress before reversal', value: `${Math.round(e1.sig)} MPa` },
+        { label: '|σ| at reverse yielding', value: `${Math.round(Math.abs(e1.sig - 2 * m.Y))} MPa` },
+        { label: 'Permanent softening at the end', value: `${Math.round(at(monoPts, xEnd) - rev[rev.length - 1][1])} MPa` },
+        { label: 'Young’s modulus at the end', value: `${Math.round(r.ends[1].E)} MPa` }]);
+    } else if (test === 'strain') {
+      const mx = UI.peaks(r.ends, 'max', 'sig'), mn = UI.peaks(r.ends, 'min', 'sig');
+      p2Cap.textContent = 'Peak stresses in each cycle';
+      Plot.draw(p2, p2Tip, { xlabel: 'Cycle (0 = first loading)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'σ max', pts: mx.map((s, i) => [i, s]), color: S1 }, { name: '|σ min|', pts: mn.map((s, i) => [i + 1, -s]), color: S2, dash: '6 4' }],
+        tip: (n, x, y) => `${n}, cycle ${x}: ${Math.round(y)} MPa` });
+      const n = mn.length, last = r.ends[r.ends.length - 1];
+      UI.stats(statsEl, [{ label: 'σ max, cycles 1 and ' + n, value: `${Math.round(mx[1])} → ${Math.round(mx[n])} MPa` },
+        { label: 'Isotropic hardening R at the end', value: `${Math.round(last.R)} MPa` },
+        { label: 'Non-hardening region', value: `[${Math.round(last.q - last.r)}, ${Math.round(last.q + last.r)}] MPa` }]);
+    } else {
+      p2Cap.textContent = 'Back stress parts and isotropic hardening against plastic strain';
+      Plot.draw(p2, p2Tip, { xlabel: 'Plastic strain (%)', ylabel: 'MPa', xzero: true,
+        series: [{ name: 'α* = α − β', pts: H.map((h) => [100 * h.epsp, h.alpha - h.beta]), color: S1 },
+                 { name: 'β', pts: H.map((h) => [100 * h.epsp, h.beta]), color: S2, dash: '6 4' },
+                 { name: 'R', pts: H.map((h) => [100 * h.epsp, h.R]), color: S3 }],
+        tip: (n, x, y) => `${n}: εp ${x.toFixed(3)} %, ${Math.round(y)} MPa` });
+      const e = r.ends[0];
+      UI.stats(statsEl, [{ label: 'Final stress', value: `${Math.round(e.sig)} MPa` },
+        { label: 'Saturation stress B + Rsat + b', value: `${Math.round(m.B + m.Rsat + m.b)} MPa` },
+        { label: 'Young’s modulus at the end', value: `${Math.round(e.E)} MPa` }]);
+    }
+    p3Cap.textContent = 'Stress σ, yield surface α ± Y and bounding surface β ± (B + R)';
+    Plot.draw(p3, p3Tip, { xlabel: 'Loading step', ylabel: 'Stress (MPa)',
+      series: [{ name: 'Bounding surface β ± (B + R)', pts: H.map((h) => [h.step, h.beta + h.BR]), color: S3 },
+               { name: 'Bounding surface β − (B + R)', noLegend: true, pts: H.map((h) => [h.step, h.beta - h.BR]), color: S3 },
+               { name: 'Yield surface α ± Y', pts: H.map((h) => [h.step, h.alpha + h.Y]), color: S2, dash: '6 4' },
+               { name: 'Yield surface α − Y', noLegend: true, pts: H.map((h) => [h.step, h.alpha - h.Y]), color: S2, dash: '6 4' },
+               { name: 'Stress σ', pts: H.map((h) => [h.step, h.sig]), color: S1 }],
+      tip: (n, x, y) => `${n}, step ${x}: ${Math.round(y)} MPa` });
+    p4Cap.textContent = 'Bounding surface centre β, non-hardening region q ± r and isotropic hardening R';
+    Plot.draw(p4, p4Tip, { xlabel: 'Loading step', ylabel: 'MPa',
+      series: [{ name: 'Non-hardening region q ± r', pts: H.map((h) => [h.step, h.q + h.r]), color: S4 },
+               { name: 'Non-hardening region q − r', noLegend: true, pts: H.map((h) => [h.step, h.q - h.r]), color: S4 },
+               { name: 'β', pts: H.map((h) => [h.step, h.beta]), color: S2 },
+               { name: 'R', pts: H.map((h) => [h.step, h.R]), color: S3, dash: '6 4' }],
+      tip: (n, x, y) => `${n}, step ${x}: ${Math.round(y)} MPa` });
+  },
+});
+
+</script>
+</body>
+</html>

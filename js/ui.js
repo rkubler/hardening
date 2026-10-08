@@ -5,9 +5,9 @@
   /** Build labelled numeric inputs. spec: [{ id, label, unit, value, min, max, gt }] */
   function fields(container, spec) {
     container.innerHTML = spec.map((f) => `
-      <label class="fld" for="${f.id}">
+      <label class="fld${f.text ? " wide" : ""}" for="${f.id}">
         <span class="fld-l">${f.label}</span>
-        <input type="number" id="${f.id}" value="${f.value}" step="any" inputmode="decimal">
+        ${f.text ? `<input type="text" id="${f.id}" value="${f.value}" inputmode="decimal" spellcheck="false">` : `<input type="number" id="${f.id}" value="${f.value}" step="any" inputmode="decimal">`}
         <span class="fld-u">${f.unit || ""}</span>
       </label>`).join("");
   }
@@ -17,6 +17,7 @@
     const out = {};
     for (const f of spec) {
       const inp = document.getElementById(f.id);
+      if (f.text) { out[f.key || f.id] = inp.value; continue; }
       const v = parseFloat(inp.value);
       let msg = null;
       if (!isFinite(v)) msg = `Enter a number for ${f.name || f.label}.`;

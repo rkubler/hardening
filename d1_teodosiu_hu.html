@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teodosiu–Hu model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">D1 · Microstructure-based and distortional models</p>
+  <h1>Teodosiu–Hu model (1995)</h1>
+  <p class="lede">A microstructure-based model for sheet steels. Besides the back stress, it follows the persistent dislocation structures (dislocation walls and cells) through a tensor S and their polarity P. It describes what happens when the strain path changes: transient softening and workhardening stagnation after a reversal, and cross hardening after an orthogonal change. The loading is applied to a thin-walled tube in tension–torsion.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">Equivalent stress</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="Equivalent stress"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Stress–strain curve</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Stress–strain curve"></svg><div class="tip" id="p2Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p3Cap">Internal variables</p><div class="legend" id="p3Leg"></div><svg id="p3" role="img" aria-label="Internal variables"></svg><div class="tip" id="p3Tip"></div></div>
+      <div id="surf"></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      J(<span class="t">σ</span> − <span class="t">X</span>) = Y, &nbsp; Y = Y<sub>0</sub> + R + f |<span class="t">S</span>| &nbsp;&nbsp;&nbsp;&nbsp;
+      dR = C<sub>R</sub> (R<sub>sat</sub> − R) dp &nbsp;&nbsp;&nbsp;&nbsp;
+      d<span class="t">X</span> = C<sub>X</sub> (X<sub>sat</sub> <span class="t">N</span> − <span class="t">X</span>) dp<br>
+      X<sub>sat</sub> = X<sub>0</sub> + (1 − f) |<span class="t">S</span>| √(r + (1 − r) β<sub>S</sub>²), &nbsp; β<sub>S</sub> = S<sub>D</sub>/|<span class="t">S</span>| &nbsp;&nbsp;&nbsp;&nbsp;
+      S<sub>D</sub> = <span class="t">N</span> : <span class="t">S</span> : <span class="t">N</span>, &nbsp; <span class="t">S</span><sub>L</sub> = <span class="t">S</span> − S<sub>D</sub> <span class="t">N</span> ⊗ <span class="t">N</span><br>
+      dS<sub>D</sub> = C<sub>SD</sub> [ g (S<sub>sat</sub> − S<sub>D</sub>) − h S<sub>D</sub> ] dp &nbsp;&nbsp;&nbsp;&nbsp;
+      d<span class="t">S</span><sub>L</sub> = −C<sub>SL</sub> (|<span class="t">S</span><sub>L</sub>|/S<sub>sat</sub>)<sup>n<sub>L</sub></sup> <span class="t">S</span><sub>L</sub> dp &nbsp;&nbsp;&nbsp;&nbsp;
+      d<span class="t">P</span> = C<sub>P</sub> (<span class="t">N</span> − <span class="t">P</span>) dp<br>
+      h = ½ (1 − <span class="t">X</span> : <span class="t">N</span> / X<sub>sat</sub>) &nbsp;&nbsp;&nbsp;&nbsp;
+      g = 1 − c<sub>P</sub> |S<sub>D</sub>/S<sub>sat</sub> − <span class="t">P</span> : <span class="t">N</span>| if <span class="t">P</span> : <span class="t">N</span> ≥ 0, &nbsp;
+      g = (1 + <span class="t">P</span> : <span class="t">N</span>)<sup>n<sub>P</sub></sup> (1 − c<sub>P</sub> S<sub>D</sub>/S<sub>sat</sub>) otherwise, &nbsp; c<sub>P</sub> = C<sub>P</sub>/(C<sub>SD</sub> + C<sub>P</sub>)
+    </div>
+    <ul>
+      <li><b>N</b> is the direction of the plastic strain rate. <b>X</b> is a back stress, describing the short-range effects (pile-ups against the walls); <b>R</b> is a small isotropic hardening.</li>
+      <li><b>S</b> (a fourth-order tensor) is the strength of the persistent dislocation structures. It is split into a directional part S<sub>D</sub>, linked to the structures that are active for the current direction N, and a latent part <b>S</b><sub>L</sub>, linked to the structures formed during earlier strain paths. A fraction f of |S| adds to the yield stress, the rest increases the saturation of the back stress.</li>
+      <li><b>P</b> is the polarity of the dislocation structures: it remembers the direction in which they were built. After a reversal, P : N &lt; 0 and g ≈ 0, so S<sub>D</sub> stops growing until P has turned to the new direction (rate C<sub>P</sub>).</li>
+      <li><b>h</b> makes S<sub>D</sub> decrease just after a reversal, when the back stress opposes the new flow (X : N = −X<sub>sat</sub>, h = 1): the old walls dissolve.</li>
+      <li><b>S<sub>L</sub></b> decays at the rate C<sub>SL</sub> once the path has changed: the old structures are slowly destroyed.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Reverse loading.</b> In the first plot, the reverse curve starts well below the monotonic one (Bauschinger effect from X). It then stays nearly flat for a few percent: the walls built in tension dissolve (h) and new ones cannot grow yet (g ≈ 0 while P still points to the old direction). This plateau is the <b>workhardening stagnation</b>. Hardening restarts once P has turned; the gap that remains is the <b>permanent softening</b>.</p>
+    <p><b>Orthogonal change (tension, then shear).</b> At the change, the structures built in tension become latent (S<sub>D</sub> → 0, |S<sub>L</sub>| = |S|). New structures grow in the shear direction while the latent ones decay slowly, so |S| rises above its monotonic value and the curve passes above the monotonic one: <b>cross hardening</b>. The overshoot is larger when C<sub>SL</sub> is small and f is close to 1. Just after the change, the back stress still points in the tension direction, which lowers the equivalent re-yielding stress.</p>
+    <p><b>Yield surface display.</b> The surface stays a von Mises circle (no distortion); it translates with X and grows or shrinks with Y. Compare with D2 and D3, where the shape itself changes.</p>
+    <p class="note">The tension–torsion plane holds two independent strain directions, so S is represented here by a 2 × 2 symmetric matrix in that plane, which is enough for the two path changes shown. The form of g above is the one used in the later implementations of the model for sheet steels; check the original papers for the exact form used in an identification. Parameters are illustrative, chosen to make each effect visible.</p>
+
+  </section>
+</main>
+<script src="js/engine.js"></script>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/engine2d.js"></script>
+<script src="js/surface.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const p1 = $("p1"), p1Tip = $("p1Tip"), p1Cap = $("p1Cap");
+const p2 = $("p2"), p2Tip = $("p2Tip"), p2Cap = $("p2Cap");
+const p3 = $("p3"), p3Tip = $("p3Tip"), p3Cap = $("p3Cap");
+
+const S1 = UI.color('--s1'), S2 = UI.color('--s2'), S3c = UI.color('--s3'), S4 = UI.color('--s4'), INK2 = UI.color('--ink2');
+const R3 = Math.sqrt(3);
+const mat = [
+  { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 210000, gt: 0 },
+  { id: 'Y0', label: 'Y<sub>0</sub>', name: 'Y0', unit: 'MPa', value: 140, gt: 0 },
+  { id: 'CR', label: 'C<sub>R</sub>', name: 'CR', unit: '–', value: 10, min: 0 },
+  { id: 'Rsat', label: 'R<sub>sat</sub>', name: 'Rsat', unit: 'MPa', value: 40, min: 0 },
+  { id: 'CX', label: 'C<sub>X</sub>', name: 'CX', unit: '–', value: 300, gt: 0 },
+  { id: 'X0', label: 'X<sub>0</sub>', name: 'X0', unit: 'MPa', value: 30, min: 0 },
+  { id: 'f', label: 'f', name: 'f', unit: '–', value: 0.9, min: 0, max: 1 },
+  { id: 'r', label: 'r', name: 'r', unit: '–', value: 0.5, min: 0, max: 1 },
+  { id: 'Ssat', label: 'S<sub>sat</sub>', name: 'Ssat', unit: 'MPa', value: 250, gt: 0 },
+  { id: 'CSD', label: 'C<sub>SD</sub>', name: 'CSD', unit: '–', value: 20, gt: 0 },
+  { id: 'CSL', label: 'C<sub>SL</sub>', name: 'CSL', unit: '–', value: 4, min: 0 },
+  { id: 'nL', label: 'n<sub>L</sub>', name: 'nL', unit: '–', value: 1, min: 0 },
+  { id: 'CP', label: 'C<sub>P</sub>', name: 'CP', unit: '–', value: 8, gt: 0 },
+  { id: 'nP', label: 'n<sub>P</sub>', name: 'nP', unit: '–', value: 20, min: 0 },
+];
+const tests = {
+  reverse: { label: 'Reverse loading (tension, then compression)', desc: 'Tension to ε1, then compression down to ε2 (shear stress zero).',
+    spec: [{ id: 'e1', label: 'ε<sub>1</sub>', name: 'ε1', unit: '%', value: 8, gt: 0, max: 30 },
+           { id: 'e2', label: 'ε<sub>2</sub>', name: 'ε2', unit: '%', value: -8, min: -30, max: 30 }],
+    check: (v) => v.e2 >= v.e1 ? 'ε2 must be smaller than ε1.' : null },
+  cross: { label: 'Orthogonal path change (tension, then shear)', desc: 'Tension to ε1, unloading, then shear up to γ2 with zero axial stress.',
+    spec: [{ id: 'c1', label: 'ε<sub>1</sub>', name: 'ε1', unit: '%', value: 8, gt: 0, max: 30 },
+           { id: 'g2', label: 'γ<sub>2</sub>', name: 'γ2', unit: '%', value: 20, gt: 0, max: 60 }] },
+  cycles: { label: 'Strain-controlled cycles', desc: 'Symmetric tension–compression cycles of amplitude εa.',
+    spec: [{ id: 'ea', label: 'ε<sub>a</sub>', name: 'εa', unit: '%', value: 1, gt: 0, max: 10 },
+           { id: 'N', label: 'Cycles', name: 'Cycles', unit: '', value: 10, min: 1, max: 50 }] },
+  mono: { label: 'Monotonic tension', desc: 'Uniaxial tension to the given strain.',
+    spec: [{ id: 'em', label: 'ε<sub>max</sub>', name: 'εmax', unit: '%', value: 15, gt: 0, max: 40 }] },
+};
+const surf = Surface.mount(document.getElementById('surf'));
+const make = (m) => Distortional.TeodosiuHu({ E: m.E, Y0: m.Y0, CR: m.CR, Rsat: m.Rsat, CX: m.CX, X0: m.X0, f: m.f, r: m.r,
+  Ssat: m.Ssat, CSD: m.CSD, CSL: m.CSL, nL: m.nL, CP: m.CP, nP: m.nP });
+const internal = (H) => ({ cap: 'Internal variables: dislocation structure strength, back stress and polarity', ylabel: 'MPa (P : N × 100)',
+  series: [{ name: 'S_D (directional)', f: (h) => h.st.SD || 0, color: S1 },
+           { name: '|S_L| (latent)', f: (h) => h.st.SLn || 0, color: S2, dash: '6 4' },
+           { name: 'X : N (back stress along the flow)', f: (h) => h.st.X[0] * h.n[0] + h.st.X[1] * h.n[1], color: S3c },
+           { name: '100 × P : N (polarity)', f: (h) => 100 * (h.st.P[0] * h.n[0] + h.st.P[1] * h.n[1]), color: S4, dash: '2 3' }] });
+function interpP(hist, p) {
+  for (let i = 1; i < hist.length; i++) { const a = hist[i - 1], b = hist[i];
+    if (p >= a.p && p <= b.p) return b.p > a.p ? a.seq + (b.seq - a.seq) * (p - a.p) / (b.p - a.p) : b.seq; }
+  return NaN;
+}
+UI.page({
+  mat, tests,
+  check: (m) => ('') || null,
+  run(m, test, v) {
+    const P = Distortional.programs, statsEl = $('stats');
+    const prog = test === 'reverse' ? P.reverse(v.e1 / 100, v.e2 / 100)
+      : test === 'cross' ? P.cross(v.c1 / 100, v.g2 / 100)
+      : test === 'cycles' ? P.strainCycles(v.ea / 100, Math.round(v.N)) : P.tension(v.em / 100);
+    const model = make(m), r = Distortional.run2d(model, prog), H = r.hist;
+    const pEnd = H[H.length - 1].p;
+    const monoModel = make(m), mono = Distortional.run2d(monoModel, P.tension(Math.max(pEnd, 0.001) * 1.02 + 0.004)).hist;
+    // p1: equivalent stress against accumulated plastic strain
+    const plasticPts = H.filter((h, i) => i > 0 && h.plastic);
+    p1Cap.textContent = 'Von Mises equivalent stress against accumulated plastic strain p, compared with monotonic tension';
+    Plot.draw(p1, p1Tip, { xlabel: 'Accumulated plastic strain p (%)', ylabel: 'Equivalent stress (MPa)', xzero: true, yzero: true,
+      series: [{ name: 'Monotonic tension', pts: mono.filter((h) => h.p <= pEnd * 1.02 + 1e-4).map((h) => [100 * h.p, h.seq]), color: INK2, dash: '6 4' },
+               { name: test === 'mono' ? 'Monotonic tension' : 'This loading path', pts: plasticPts.map((h) => [100 * h.p, h.seq]), color: S1 }],
+      tip: (n, x, y) => `${n}: p ${x.toFixed(3)} %, ${Math.round(y)} MPa` });
+    // p2: stress–strain curve
+    if (test === 'cross') {
+      const sh = H.filter((h) => h.step >= r.ends[1].step);
+      p2Cap.textContent = 'Second stage: shear stress against shear strain';
+      Plot.draw(p2, p2Tip, { xlabel: 'Shear strain γ (%)', ylabel: 'Shear stress τ (MPa)', xzero: true, yzero: true,
+        series: [{ name: 'τ', pts: sh.map((h) => [100 * h.gam, h.tau]), color: S1 }],
+        tip: (n, x, y) => `γ ${x.toFixed(3)} %, τ ${Math.round(y)} MPa` });
+    } else {
+      p2Cap.textContent = 'Axial stress–strain curve';
+      Plot.draw(p2, p2Tip, { xlabel: 'Strain (%)', ylabel: 'Stress (MPa)',
+        series: [{ name: 'σ', pts: H.map((h) => [100 * h.eps, h.sig]), color: S1 }],
+        tip: (n, x, y) => `ε ${x.toFixed(3)} %, σ ${Math.round(y)} MPa` });
+    }
+    const iv = internal(H, m);
+    p3Cap.textContent = iv.cap;
+    Plot.draw(p3, p3Tip, { xlabel: 'Accumulated plastic strain p (%)', ylabel: iv.ylabel, xzero: true,
+      series: iv.series.map((s) => ({ name: s.name, pts: H.map((h) => [100 * h.p, s.f(h)]), color: s.color, dash: s.dash, noLegend: s.noLegend })),
+      tip: (n, x, y) => `${n}: p ${x.toFixed(3)} %, ${iv.fmt ? iv.fmt(y) : y.toFixed(1)}` });
+    // read-outs
+    const diff = (h) => h.seq - interpP(mono, h.p);
+    if (test === 'reverse' || test === 'cross') {
+      const stage = H.filter((h) => h.step > r.ends[test === 'reverse' ? 0 : 1].step && h.plastic);
+      const first = stage[0], last = stage[stage.length - 1];
+      const near = stage.find((h) => h.p >= first.p + 0.02) || last;
+      const ext = stage.reduce((a, h) => (diff(h) > diff(a) ? h : a), first);
+      UI.stats(statsEl, [
+        { label: 'Equivalent stress before the change', value: `${Math.round(r.ends[0].seq)} MPa` },
+        { label: test === 'reverse' ? 'Re-yielding in compression (|σ|)' : 'Re-yielding in shear (equivalent)', value: `${Math.round(first.seq)} MPa` },
+        { label: 'Path minus monotonic, 2 % after re-yielding', value: `${UI.fix(diff(near), 0)} MPa` },
+        { label: test === 'cross' ? 'Largest overshoot above monotonic' : 'Path minus monotonic at the end', value: test === 'cross' ? `${Math.max(0, Math.round(diff(ext)))} MPa` : `${UI.fix(diff(last), 0)} MPa` }]);
+    } else if (test === 'cycles') {
+      const mx = UI.peaks(r.ends, 'max', 'sig');
+      UI.stats(statsEl, [{ label: 'σ max, first loading', value: `${Math.round(mx[0])} MPa` },
+        { label: `σ max, cycle ${mx.length - 1}`, value: `${Math.round(mx[mx.length - 1])} MPa` },
+        { label: 'Accumulated plastic strain', value: `${(100 * pEnd).toFixed(1)} %` }]);
+    } else {
+      UI.stats(statsEl, [{ label: 'Final stress', value: `${Math.round(r.ends[0].sig)} MPa` },
+        { label: 'Plastic strain', value: `${(100 * pEnd).toFixed(2)} %` }]);
+    }
+    const shape0 = model.shape(H[0]);
+    surf.update([{ name: 'This loading path', r, color: S1, shape: (s, n) => model.shape(s, n), shape0 }], 0, 0);
+  },
+});
+
+</script>
+</body>
+</html>

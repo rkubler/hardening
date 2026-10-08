@@ -66,15 +66,57 @@ footer a{color:var(--path)}
       <a class="card" href="e4_ohno_wang.html"><span class="key">E4</span><div>
         <h3>Ohno–Wang (1993), models I and II</h3>
         <p>Recall only near a critical state. Chaboche, Ohno–Wang I and II compared for uniaxial and multiaxial ratcheting and mean stress relaxation.</p></div></a>
+      <a class="card" href="e5_abdel_karim_ohno.html"><span class="key">E5</span><div>
+        <h3>Abdel-Karim–Ohno (2000)</h3>
+        <p>Ohno–Wang I plus a weak permanent recall μ. Between Ohno–Wang I (μ = 0) and Chaboche (μ = 1): steady, small ratcheting.</p></div></a>
+      <a class="card" href="e6_jiang_sehitoglu.html"><span class="key">E6</span><div>
+        <h3>Jiang–Sehitoglu (1996)</h3>
+        <p>Recall growing as a power χ of the back stress, without bracket. Compared with Chaboche and Ohno–Wang II.</p></div></a>
+      <a class="card" href="e7_chen_jiao_kim.html"><span class="key">E7</span><div>
+        <h3>Chen–Jiao–Kim (2005)</h3>
+        <p>Ohno–Wang II with an exponent χ on the bracket: identical in uniaxial loading, more recall under non-proportional loading.</p></div></a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Multisurface and two-surface models</h2>
+    <div class="list">
+      <a class="card" href="mroz.html"><span class="key">M1</span><div>
+        <h3>Mróz multisurface model (1967)</h3>
+        <p>Nested yield surfaces pushed by the stress in uniaxial loading: Masing behaviour, memory after inner loops, no ratcheting.</p></div></a>
+      <a class="card" href="m2_iwan_besseling.html"><span class="key">M2</span><div>
+        <h3>Iwan (1967) and Besseling (1958) overlay model</h3>
+        <p>Elastic–perfectly plastic elements in parallel. Elements yielding one by one, exact Masing loops and memory, no ratcheting.</p></div></a>
+      <a class="card" href="m3_dafalias_popov_krieg.html"><span class="key">M3</span><div>
+        <h3>Dafalias–Popov (1975) and Krieg (1975) two-surface model</h3>
+        <p>Plastic modulus set by the distance to a bounding surface. Smooth transitions, the overshoot after partial unloading, ratcheting.</p></div></a>
+      <a class="card" href="m4_yoshida_uemori.html"><span class="key">M4</span><div>
+        <h3>Yoshida–Uemori model (2002)</h3>
+        <p>Two surfaces and a non-hardening region. Transient Bauschinger effect, permanent softening, workhardening stagnation and modulus decrease.</p></div></a>
+      <a class="card" href="m5_hashiguchi_subloading.html"><span class="key">M5</span><div>
+        <h3>Hashiguchi subloading surface model (1989)</h3>
+        <p>No elastic domain: plastic strain grows smoothly with the normal-yield ratio R. Ratcheting below the yield stress, compared with Armstrong–Frederick.</p></div></a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Microstructure-based and distortional models</h2>
+    <div class="list">
+      <a class="card" href="d1_teodosiu_hu.html"><span class="key">D1</span><div>
+        <h3>Teodosiu–Hu (1995)</h3>
+        <p>Dislocation structures and their polarity. Workhardening stagnation after a reversal and cross hardening after an orthogonal path change.</p></div></a>
+      <a class="card" href="d2_barlat_hah.html"><span class="key">D2</span><div>
+        <h3>Barlat HAH, homogeneous anisotropic hardening (2011)</h3>
+        <p>No back stress: the yield surface flattens on the reverse side. Bauschinger effect, transient and permanent softening from distortion alone.</p></div></a>
+      <a class="card" href="d3_feigenbaum_dafalias.html"><span class="key">D3</span><div>
+        <h3>Feigenbaum–Dafalias (2007): distortional kinematic hardening</h3>
+        <p>An egg-shaped yield surface, sharp in front and flat at the back, linked to the back stress. Watch it turn round under reversed loading.</p></div></a>
     </div>
   </section>
 
   <section class="group">
     <h2>Other behaviours</h2>
     <div class="list">
-      <a class="card" href="mroz.html"><span class="key">M</span><div>
-        <h3>Mróz multisurface model</h3>
-        <p>Nested yield surfaces pushed by the stress in uniaxial loading: Masing behaviour, memory after inner loops, no ratcheting.</p></div></a>
       <a class="card" href="masing.html"><span class="key">Ma</span><div>
         <h3>Masing behaviour</h3>
         <p>Stabilized loops at three amplitudes and their upper branches moved to a common origin. Masing and non-Masing materials.</p></div></a>
@@ -84,7 +126,7 @@ footer a{color:var(--path)}
   <footer>
     <p class="credits">Author: Dr Régis Kubler, Arts et Métiers Institute of Technology. Developed with the assistance of Claude Opus 5.5 (Anthropic), October 2026.
       Code: <a href="LICENSE">MIT</a> · Documentation: <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p>
-    <p>All parameters are illustrative and do not represent a specific material. The simulators use a thin-walled tube model in tension–torsion with explicit integration in small increments.</p>
+    <p>All parameters are illustrative and do not represent a specific material. Simulators A to E7 and D1 to D3 use a thin-walled tube model in tension–torsion; M1 to M5 are uniaxial. All use explicit integration in small increments.</p>
   </footer>
 </main>
 </body>
