@@ -261,5 +261,12 @@ function sendH(){if(window.parent!==window)parent.postMessage({cyclicAnimHeight:
 new ResizeObserver(sendH).observe(document.body);window.addEventListener('load',sendH);
 </script>
 
+<script>
+// Visit counter (GoatCounter); not counted when shown inside the index page
+if (!/[?&]embed/.test(location.search)) {
+  var gc = document.createElement('script'); gc.async = true; gc.src = '//gc.zgo.at/count.js';
+  gc.setAttribute('data-goatcounter', 'https://rkubler.goatcounter.com/count'); document.body.appendChild(gc);
+}
+</script>
 </body>
 </html>
