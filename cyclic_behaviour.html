@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cyclic Behaviour of Metals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one stage — big hysteresis plot on the left, loading history + cycle-by-cycle evolution stacked on the right, scene chips above */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#18212c; --muted:#556070; --rule:#d6dce4; --grid:#e6eaf0;
+  --accent:#1f5fa8; --c0:#3d6fb5; --c1:#8a4fa8; --c2:#d4501e; --mark:#18202a;
+  --f-display:"IBM Plex Serif",Georgia,serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10151c; --panel:#18202a; --ink:#e6ebf1; --muted:#9aa6b5; --rule:#2c3643; --grid:#232c37;
+  --accent:#6fa8f0; --c0:#7fa6e0; --c1:#b98ad6; --c2:#ff8a4c; --mark:#e6ebf0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151c; --panel:#18202a; --ink:#e6ebf1; --muted:#9aa6b5; --rule:#2c3643; --grid:#232c37;
+  --accent:#6fa8f0; --c0:#7fa6e0; --c1:#b98ad6; --c2:#ff8a4c; --mark:#e6ebf0; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:24px 40px;display:grid;gap:16px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(24px,4vw,34px);line-height:1.1;margin:4px 0 0;text-wrap:balance}
+.lead{color:var(--muted);max-width:68ch;margin:6px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 13px var(--f-body);border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.chip .n{font-family:var(--f-mono);color:var(--muted);font-size:11px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] .n{color:var(--bg);opacity:.7}
+.chip:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px}
+@media (max-width:760px){.stage{grid-template-columns:1fr}}
+.main{display:grid;gap:8px;min-width:0}
+.side{display:grid;gap:14px;align-content:start;min-width:0}
+.plot{position:relative;width:100%;overflow:hidden}
+.plot canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
+.big{aspect-ratio:4/3;max-width:100%}
+.small{aspect-ratio:16/8;max-width:100%}
+.ptitle{flex-wrap:wrap;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ptitle b{font-weight:500;color:var(--ink);text-transform:none;letter-spacing:0}
+.caption h2{font-family:var(--f-display);font-weight:400;font-size:19px;margin:0;text-wrap:balance}
+.caption p{margin:6px 0 0;color:var(--muted);font-size:14px;max-width:60ch}
+.caption .see{color:var(--ink)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{font:500 13px var(--f-body);background:transparent;color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:5px 10px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:70px}
+.progress{flex:1;min-width:120px;height:3px;background:var(--grid);border-radius:2px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent)}
+.legend{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.legend .ramp{width:90px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--c0),var(--c1),var(--c2))}
+.note{font-size:12.5px;color:var(--muted)}
+</style>
+
+</head>
+<body style="margin:0">
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Hardening simulators · Introduction</div>
+    <h1>What happens when a metal is loaded back and forth</h1>
+    <p class="lead">A metal under cyclic loading does not repeat the same loop. Depending on the material and on how it is loaded, the loops grow, shrink, drift or settle. Each scene below shows one of these effects on the stress–strain graph, cycle by cycle.</p>
+  </header>
+
+  <nav class="chips" id="chips" aria-label="Scenes"></nav>
+
+  <section class="stage">
+    <div class="main">
+      <div class="ptitle"><span>Stress σ (MPa) against strain ε (%)</span><span class="legend">cycle 1 <span class="ramp"></span> last</span></div>
+      <div class="plot big"><canvas id="cv-main" aria-label="Animated stress-strain loops"></canvas></div>
+      <div class="bar">
+        <button class="btn primary" id="play">Pause</button>
+        <button class="btn" id="restart">Restart scene</button>
+        <div class="progress"><i id="prog"></i></div>
+        <span class="note" id="cyc">cycle 1</span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="caption" id="caption"></div>
+      <div>
+        <div class="ptitle"><span id="t-load">Imposed loading</span></div>
+        <div class="plot small"><canvas id="cv-load"></canvas></div>
+      </div>
+      <div>
+        <div class="ptitle"><span id="t-evo">Evolution</span><b id="v-evo"></b></div>
+        <div class="plot small"><canvas id="cv-evo"></canvas></div>
+      </div>
+    </div>
+  </section>
+  <p class="note">All curves are computed live with a one-dimensional Chaboche model (two Armstrong–Frederick back stresses plus Voce isotropic hardening, E = 200 GPa). Parameters are illustrative and chosen so that each effect is visible.</p>
+</div>
+
+<script>
+// ---------- 1D Chaboche model ----------
+function Mat(p){this.p=p;this.eps=0;this.ep=0;this.X=[0,0];this.R=0;this.sig=0;this.plast=false;}
+Mat.prototype.step=function(de){const p=this.p,e=this.eps+de,st=p.E*(e-this.ep),X=this.X[0]+this.X[1],f=Math.abs(st-X)-(p.sy+this.R);this.plast=false;
+  if(f>0){const s=Math.sign(st-X);const H=p.C[0]-s*p.g[0]*this.X[0]+p.C[1]-s*p.g[1]*this.X[1]+p.b*(p.Q-this.R);let dp=Math.max(0,f/(p.E+H));
+    this.ep+=s*dp;for(let i=0;i<2;i++)this.X[i]+=(p.C[i]*s-p.g[i]*this.X[i])*dp;this.R+=p.b*(p.Q-this.R)*dp;this.plast=true;}
+  this.eps=e;this.sig=p.E*(e-this.ep);};
+function run(p,mode,targets,de){const m=new Mat(p),out=[{e:0,s:0,c:0,pl:false,t:0}];let t=0;
+  targets.forEach((T,k)=>{const cur=()=>mode==='strain'?m.eps:m.sig;const dir=Math.sign(T-cur());let n=0;
+    while((T-cur())*dir>1e-12&&n<300000){const d=mode==='strain'?Math.min(de,Math.abs(T-m.eps))*dir:de*dir;m.step(d);n++;t++;
+      out.push({e:m.eps*100,s:m.sig,c:Math.floor(k/2),pl:m.plast,k:k});}});
+  // time axis = index of load reversal progress (uniform per half-cycle)
+  let idx=0;for(let k=0;k<targets.length;k++){const seg=[];while(idx<out.length&&(out[idx].k===k||(idx===0)))seg.push(idx++);seg.forEach((j,i)=>out[j].t=k+(i+1)/seg.length);}
+  out[0].t=0;return out;}
+function cyc(a,b,n){const t=[];for(let i=0;i<n;i++)t.push(a,b);return t;}
+function thin(d,max){if(d.length<=max)return d;const k=Math.ceil(d.length/max),o=[];for(let i=0;i<d.length;i++)if(i%k===0||i===d.length-1||(i>0&&d[i].k!==d[i-1].k))o.push(d[i]);return o;}
+
+const base={E:200000,sy:200,C:[60000,8000],g:[600,40],Q:0,b:0};
+const SCENES=[
+ {key:'bauschinger',name:'Bauschinger effect',
+  title:'Bauschinger effect',
+  text:'Strain is taken to +1 % and then reversed. In tension the material first yields at 200 MPa.',
+  see:'On the way back it yields again long before −200 MPa: hardening in one direction has softened the opposite direction. This is what kinematic hardening (the back stress) describes.',
+  p:{...base},mode:'strain',targets:[0.01,-0.01],cycles:1,dur:7,
+  evo:'yield'},
+ {key:'hardening',name:'Cyclic hardening',
+  title:'Cyclic hardening',
+  text:'Strain cycles at ±0.6 %, same amplitude every cycle.',
+  see:'The stress needed to reach the same strain grows from cycle to cycle, then levels off at a stabilised loop. Typical of annealed metals such as 316L or copper; modelled with isotropic hardening R(p).',
+  p:{...base,Q:150,b:15},mode:'strain',targets:cyc(0.006,-0.006,12),cycles:12,dur:11,
+  evo:'smax',evoTitle:'Peak stress per cycle'},
+ {key:'softening',name:'Cyclic softening',
+  title:'Cyclic softening',
+  text:'The same ±0.6 % strain cycles on a material with a higher initial yield stress.',
+  see:'This time the loops shrink: the peak stress falls cycle after cycle before stabilising. Typical of cold-worked or quenched and tempered steels; modelled with a negative isotropic saturation Q.',
+  p:{...base,sy:320,Q:-120,b:15},mode:'strain',targets:cyc(0.006,-0.006,12),cycles:12,dur:11,
+  evo:'smax',evoTitle:'Peak stress per cycle'},
+ {key:'relaxation',name:'Mean stress relaxation',
+  title:'Mean stress relaxation',
+  text:'Non-symmetric strain cycles between 0.1 % and 0.9 %.',
+  see:'The first loop sits higher on the stress axis (tensile mean stress). The loops slide down until they are centred on zero stress. The nonlinear recall term of the back stress drives this relaxation.',
+  p:{...base},mode:'strain',targets:cyc(0.009,0.001,14),cycles:14,dur:11,
+  evo:'smean',evoTitle:'Mean stress per cycle'},
+ {key:'ratcheting',name:'Ratcheting',
+  title:'Ratcheting',
+  text:'Non-symmetric stress cycles between −150 and +330 MPa (mean stress 90 MPa).',
+  see:'The loops do not close. Each cycle adds a little plastic strain in the direction of the mean stress, so the material creeps forward cycle after cycle. With plain Armstrong–Frederick hardening the rate never decreases.',
+  p:{...base},mode:'stress',targets:cyc(330,-150,20),cycles:20,dur:12,
+  evo:'emean',evoTitle:'Mean strain per cycle'},
+ {key:'shakedown',name:'Shakedown',
+  title:'Ratcheting that stops (shakedown)',
+  text:'The same −150 / +330 MPa stress cycles, with isotropic hardening added.',
+  see:'The material still ratchets at first, but each cycle adds less strain as the elastic domain grows. The loops pile up and the strain stabilises: plastic shakedown.',
+  p:{...base,Q:150,b:25},mode:'stress',targets:cyc(330,-150,20),cycles:20,dur:12,
+  evo:'emean',evoTitle:'Mean strain per cycle'},
+];
+SCENES.forEach(S=>{
+  const raw=run(S.p,S.mode,S.targets,S.mode==='strain'?1e-5:1e-5);
+  S.data=thin(raw,2600);
+  // per-cycle summaries
+  const per=[];S.data.forEach(q=>{(per[q.c]=per[q.c]||[]).push(q)});
+  S.per=per.map((a,i)=>{const sm=Math.max(...a.map(q=>q.s)),sn=Math.min(...a.map(q=>q.s)),em=Math.max(...a.map(q=>q.e)),en=Math.min(...a.map(q=>q.e));
+    return {c:i+1,smax:sm,smean:(sm+sn)/2,emean:(em+en)/2,emax:em};});
+  // Bauschinger: reverse yield point = first plastic point after the reversal
+  if(S.key==='bauschinger'){const r=S.data.findIndex(q=>q.k===1);const y1=S.data.findIndex(q=>q.pl);
+    let j=r;while(j<S.data.length&&!S.data[j].pl)j++;S.ytens=S.data[y1];S.yrev=S.data[j];S.peak=S.data[r-1];}
+  const es=S.data.map(q=>q.e),ss=S.data.map(q=>q.s);
+  S.xr=[Math.min(...es),Math.max(...es)];S.yr=[Math.min(...ss),Math.max(...ss)];
+});
+
+// ---------- drawing helpers ----------
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function hex(c){c=c.replace('#','');return [0,2,4].map(i=>parseInt(c.substr(i,2),16));}
+function ramp(t){const a=hex(css('--c0')),b=hex(css('--c1')),c=hex(css('--c2'));let u,x,y;if(t<.5){u=t*2;x=a;y=b}else{u=(t-.5)*2;x=b;y=c}
+  return `rgb(${x.map((v,i)=>Math.round(v+(y[i]-v)*u)).join(',')})`;}
+function nice(lo,hi,n){const span=hi-lo,raw=span/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag,st=(r<1.5?1:r<3?2:r<7?5:10)*mag;
+  const t=[];for(let v=Math.ceil(lo/st)*st;v<=hi+1e-9;v+=st)t.push(+v.toFixed(10));return {t,st};}
+function setup(cv){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);
+  const g=cv.getContext('2d');g.setTransform(d,0,0,d,0,0);return {g,w:r.width,h:r.height};}
+function frame(ctx,xr,yr,opt){const {g,w,h}=ctx,m={l:opt.ml||48,r:12,t:10,b:opt.mb||30};
+  const pad=(a,f)=>{const s=a[1]-a[0]||1;return [a[0]-s*f,a[1]+s*f]};xr=pad(xr,.06);yr=pad(yr,.08);
+  if(opt.zeroY){yr=[Math.min(yr[0],0),Math.max(yr[1],0)]}
+  const X=v=>m.l+(v-xr[0])/(xr[1]-xr[0])*(w-m.l-m.r),Y=v=>h-m.b-(v-yr[0])/(yr[1]-yr[0])*(h-m.t-m.b);
+  g.clearRect(0,0,w,h);g.font=`11px ${css('--f-mono')}`;g.lineWidth=1;
+  const tx=nice(xr[0],xr[1],opt.nx||6),ty=nice(yr[0],yr[1],opt.ny||6);
+  g.strokeStyle=css('--grid');g.fillStyle=css('--muted');
+  g.textAlign='center';g.textBaseline='top';tx.t.forEach(v=>{g.beginPath();g.moveTo(X(v),m.t);g.lineTo(X(v),h-m.b);g.stroke();g.fillText(opt.fx?opt.fx(v):v,X(v),h-m.b+6)});
+  g.textAlign='right';g.textBaseline='middle';ty.t.forEach(v=>{g.beginPath();g.moveTo(m.l,Y(v));g.lineTo(w-m.r,Y(v));g.stroke();g.fillText(opt.fy?opt.fy(v):v,m.l-6,Y(v))});
+  g.strokeStyle=css('--rule');g.lineWidth=1.2;
+  if(xr[0]<0&&xr[1]>0){g.beginPath();g.moveTo(X(0),m.t);g.lineTo(X(0),h-m.b);g.stroke()}
+  if(yr[0]<0&&yr[1]>0){g.beginPath();g.moveTo(m.l,Y(0));g.lineTo(w-m.r,Y(0));g.stroke()}
+  if(opt.xl){g.fillStyle=css('--muted');g.textAlign='right';g.textBaseline='bottom';g.fillText(opt.xl,w-m.r,h-m.b-4)}
+  return {X,Y,m,w,h,g};}
+
+// ---------- state ----------
+const cvM=document.getElementById('cv-main'),cvL=document.getElementById('cv-load'),cvE=document.getElementById('cv-evo');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let si=0,pos=0,playing=!reduce,last=0,hold=0;
+const chips=document.getElementById('chips');
+SCENES.forEach((S,i)=>{const b=document.createElement('button');b.className='chip';b.id='chip-'+S.key;b.innerHTML=`<span class="n">${i+1}</span>${S.name}`;
+  b.onclick=()=>{go(i)};chips.appendChild(b)});
+function go(i){si=i;pos=reduce?SCENES[i].data.length-1:0;hold=0;
+  [...chips.children].forEach((c,j)=>c.setAttribute('aria-pressed',j===i));const S=SCENES[i];
+  document.getElementById('caption').innerHTML=`<h2>${S.title}</h2><p>${S.text}</p><p class="see">${S.see}</p>`;
+  document.getElementById('t-load').textContent=S.mode==='strain'?'Imposed strain ε(t) · strain control':'Imposed stress σ(t) · stress control';
+  document.getElementById('t-evo').textContent=S.evo==='yield'?'Yield stress, tension vs reverse':S.evoTitle;
+  draw();}
+document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').textContent=playing?'Pause':'Play';if(playing&&pos>=SCENES[si].data.length-1)go(si)};
+document.getElementById('restart').onclick=()=>{go(si);if(!playing){playing=true;document.getElementById('play').textContent='Pause'}};
+if(!playing)document.getElementById('play').textContent='Play';
+
+function draw(){
+  const S=SCENES[si],D=S.data,n=Math.max(1,Math.floor(pos)),cur=D[Math.min(n,D.length-1)],ncyc=S.cycles;
+  // main
+  let F=frame(setup(cvM),S.xr,S.yr,{fx:v=>v.toFixed(Math.abs(v)<1&&v!==0?1:Math.abs(v)%1?1:0),xl:'ε (%)',nx:7,ny:7});
+  let g=F.g;
+  if(S.key==='bauschinger'){ // reference lines ±σy
+    g.setLineDash([4,4]);g.strokeStyle=css('--muted');g.lineWidth=1;[200,-200].forEach(v=>{g.beginPath();g.moveTo(F.m.l,F.Y(v));g.lineTo(F.w-F.m.r,F.Y(v));g.stroke()});g.setLineDash([]);}
+  g.lineJoin='round';g.lineCap='round';
+  for(let i=1;i<=n&&i<D.length;i++){const q=D[i],o=D[i-1];const age=(cur.c-q.c);
+    g.strokeStyle=ramp(ncyc>1?q.c/(ncyc-1):0);g.globalAlpha=age>0?Math.max(.35,1-age*.12):1;g.lineWidth=age>0?1.4:2.4;
+    g.beginPath();g.moveTo(F.X(o.e),F.Y(o.s));g.lineTo(F.X(q.e),F.Y(q.s));g.stroke();}
+  g.globalAlpha=1;
+  if(S.key==='bauschinger'){const mk=(q,lab,al)=>{if(n<D.indexOf(q))return;g.fillStyle=css('--mark');g.beginPath();g.arc(F.X(q.e),F.Y(q.s),4,0,7);g.fill();
+      g.font=`500 12px ${css('--f-body')}`;g.textAlign=al;g.textBaseline='middle';g.fillText(lab,F.X(q.e)+(al==='left'?10:-10),F.Y(q.s))};
+    g.font=`11px ${css('--f-mono')}`;g.fillStyle=css('--muted');g.textAlign='left';g.textBaseline='bottom';g.fillText('+σy',F.m.l+4,F.Y(200)-3);g.textBaseline='top';g.fillText('−σy',F.m.l+4,F.Y(-200)+3);
+    mk(S.ytens,`first yield, ${Math.round(S.ytens.s)} MPa`,'left');
+    if(n>=D.indexOf(S.yrev))mk(S.yrev,`reverse yield, ${Math.round(S.yrev.s)} MPa`,'right');}
+  // current point
+  g.fillStyle=css('--bg');g.strokeStyle=ramp(ncyc>1?cur.c/(ncyc-1):0);g.lineWidth=2.5;g.beginPath();g.arc(F.X(cur.e),F.Y(cur.s),5.5,0,7);g.fill();g.stroke();
+  // loading history
+  const T=S.targets.length;const isS=S.mode==='stress';const lv=q=>isS?q.s:q.e;
+  const ly=isS?S.yr:S.xr;
+  F=frame(setup(cvL),[0,T],ly,{ml:44,mb:22,nx:Math.min(T,8),ny:3,fx:v=>v===0?'':(v/2)%1?'':v/2,fy:v=>isS?Math.round(v):v.toFixed(1),zeroY:true});g=F.g;
+  g.fillStyle=css('--muted');g.textAlign='right';g.textBaseline='bottom';g.fillText('cycles',F.w-F.m.r,F.h-F.m.b-3);
+  g.strokeStyle=css('--rule');g.lineWidth=1.5;g.beginPath();D.forEach((q,i)=>{i?g.lineTo(F.X(q.t),F.Y(lv(q))):g.moveTo(F.X(q.t),F.Y(lv(q)))});g.stroke();
+  g.strokeStyle=css('--accent');g.lineWidth=2;g.beginPath();for(let i=0;i<=n&&i<D.length;i++){const q=D[i];i?g.lineTo(F.X(q.t),F.Y(lv(q))):g.moveTo(F.X(q.t),F.Y(lv(q)))}g.stroke();
+  g.fillStyle=css('--accent');g.beginPath();g.arc(F.X(cur.t),F.Y(lv(cur)),3.5,0,7);g.fill();
+  // evolution
+  const ve=document.getElementById('v-evo');
+  if(S.evo==='yield'){const c=setup(cvE),gg=c.g,w=c.w,h=c.h;gg.clearRect(0,0,w,h);
+    const rows=[['Tension',S.ytens.s,true],['Reverse',-S.yrev.s,n>=D.indexOf(S.yrev)]];const L=80,R=w-56,mx=220;
+    rows.forEach((r,i)=>{const y=18+i*(h-30)/2+((h-30)/2-18)/2;gg.font=`500 12px ${css('--f-body')}`;gg.fillStyle=css('--ink');gg.textAlign='left';gg.textBaseline='middle';gg.fillText(r[0],0,y+9);
+      gg.fillStyle=css('--grid');gg.fillRect(L,y,R-L,18);if(r[2]){gg.fillStyle=i?ramp(.6):ramp(0);gg.fillRect(L,y,(R-L)*r[1]/mx,18);
+      gg.fillStyle=css('--ink');gg.font=`12px ${css('--f-mono')}`;gg.fillText(Math.round(r[1])+' MPa',R+6,y+9)}});
+    ve.textContent=n>=D.indexOf(S.yrev)?`−${Math.round((1-(-S.yrev.s)/S.ytens.s)*100)} % on reversal`:'';return;}
+  const P=S.per.slice(0,cur.c+1),key=S.evo,all=S.per.map(p=>p[key]);
+  const done=n>=D.length-1;const shown=done?S.per:P.slice(0,Math.max(0,cur.c)); // completed cycles only
+  F=frame(setup(cvE),[1,Math.max(2,S.cycles)],[Math.min(...all),Math.max(...all)],{ml:44,mb:22,nx:Math.min(S.cycles,6),ny:3,fy:v=>key==='emean'?v.toFixed(1):Math.round(v),zeroY:key==='smean'});g=F.g;
+  g.fillStyle=css('--muted');g.textAlign='right';g.textBaseline='bottom';g.fillText('cycle N',F.w-F.m.r,F.h-F.m.b-3);
+  if(shown.length){g.strokeStyle=css('--muted');g.lineWidth=1.2;g.beginPath();shown.forEach((p,i)=>{i?g.lineTo(F.X(p.c),F.Y(p[key])):g.moveTo(F.X(p.c),F.Y(p[key]))});g.stroke();
+    shown.forEach(p=>{g.fillStyle=ramp(S.cycles>1?(p.c-1)/(S.cycles-1):0);g.beginPath();g.arc(F.X(p.c),F.Y(p[key]),3.5,0,7);g.fill()});
+    const lp=shown[shown.length-1];ve.textContent=`N = ${lp.c}: `+(key==='emean'?lp[key].toFixed(2)+' %':Math.round(lp[key])+' MPa');}else ve.textContent='';
+  document.getElementById('cyc').textContent=`cycle ${Math.min(cur.c+1,S.cycles)} of ${S.cycles}`;
+}
+function tick(ts){const dt=last?Math.min(.05,(ts-last)/1000):0;last=ts;const S=SCENES[si];
+  if(playing){if(pos<S.data.length-1){pos=Math.min(S.data.length-1,pos+dt*S.data.length/S.dur);draw()}
+    else{hold+=dt;if(hold>2.5)go((si+1)%SCENES.length)}}
+  document.getElementById('prog').style.width=(100*pos/(S.data.length-1))+'%';
+  requestAnimationFrame(tick);}
+document.getElementById('cyc').textContent='';
+new ResizeObserver(()=>draw()).observe(cvM);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+go(0);requestAnimationFrame(tick);
+
+// Embedded mode (iframe in index.html): hide the page header and report the height to the parent page
+if(/[?&]embed/.test(location.search)){document.querySelector('header').hidden=true;document.querySelector('.wrap').style.paddingBlock='4px';document.querySelector('.wrap').style.paddingInline='0';document.body.style.background='transparent';}
+function sendH(){if(window.parent!==window)parent.postMessage({cyclicAnimHeight:document.documentElement.scrollHeight},'*');}
+new ResizeObserver(sendH).observe(document.body);window.addEventListener('load',sendH);
+</script>
+
+</body>
+</html>

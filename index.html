@@ -22,6 +22,10 @@ a.card:focus-visible{outline:2px solid var(--path);outline-offset:2px}
 .key{font:400 22px/1 var(--serif);color:var(--path);padding-top:3px}
 a.card h3{font:500 17px/1.3 var(--sans);margin:0 0 3px;color:var(--ink)}
 a.card p{margin:0;color:var(--ink2);font-size:14.5px}
+.intro-anim{margin:8px 0 0}
+.intro-anim iframe{display:block;width:100%;height:780px;border:0}
+.intro-anim .open{margin:6px 0 0;font-size:13px}
+.intro-anim .open a{color:var(--path)}
 footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);color:var(--ink2);font-size:13px}
 footer p{margin:0 0 6px}
 footer .credits{color:var(--ink);font-size:14px}
@@ -32,6 +36,13 @@ footer a{color:var(--path)}
 <main>
   <h1>Hardening simulators</h1>
   <p class="lede">Interactive simulators of the cyclic hardening of metals, written for teaching. Each one runs entirely in the browser: change the material parameters or the loading, run, and compare the models.</p>
+
+
+  <section class="group intro-anim">
+    <h2>Introduction: how complex cyclic behaviour can be</h2>
+    <iframe id="cyclic-anim" src="cyclic_behaviour.html?embed" title="Animated stress–strain loops: Bauschinger effect, cyclic hardening and softening, mean stress relaxation, ratcheting and shakedown" loading="lazy" allowtransparency="true"></iframe>
+    <p class="open"><a href="cyclic_behaviour.html">Open the animation on its own page</a></p>
+  </section>
 
   <section class="group">
     <h2>Nonlinear kinematic hardening</h2>
@@ -129,5 +140,11 @@ footer a{color:var(--path)}
     <p>All parameters are illustrative and do not represent a specific material. Simulators A to E7 and D1 to D3 use a thin-walled tube model in tension–torsion; M1 to M5 are uniaxial. All use explicit integration in small increments.</p>
   </footer>
 </main>
+<script>
+// Fit the animation frame to its content (the animation reports its height)
+window.addEventListener('message', function (e) {
+  if (e.data && e.data.cyclicAnimHeight) document.getElementById('cyclic-anim').style.height = e.data.cyclicAnimHeight + 'px';
+});
+</script>
 </body>
 </html>
