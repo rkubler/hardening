@@ -142,7 +142,7 @@ const SCENES=[
  {key:'shakedown',name:'Shakedown',
   title:'Ratcheting that stops (shakedown)',
   text:'The same −150 / +330 MPa stress cycles, with isotropic hardening added.',
-  see:'The material still ratchets at first, but each cycle adds less strain as the elastic domain grows. The loops pile up and the strain stabilises: plastic shakedown.',
+  see:'The material still ratchets at first, but the elastic domain grows (isotropic hardening R) until it contains the whole stress cycle. Each cycle adds less plastic strain, the loops close into straight elastic lines and the strain stops growing: elastic shakedown.',
   p:{...base,Q:150,b:25},mode:'stress',targets:cyc(330,-150,20),cycles:20,dur:12,
   evo:'emean',evoTitle:'Mean strain per cycle'},
 ];
