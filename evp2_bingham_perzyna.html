@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingham and Perzyna overstress models – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">EVP2 · Elastoviscoplastic (rate-dependent) models</p>
+  <h1>Bingham (1922) and Perzyna (1966): overstress models</h1>
+  <p class="lede">Viscoplasticity with an elastic domain. Below the yield stress the material is elastic and does not creep; above it, the plastic strain rate grows with the overstress, the distance between the stress and the yield stress. Bingham uses a linear law, Perzyna a power law. Each run compares both with the rate-independent limit.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ<sub>y</sub>(p) = σ<sub>y0</sub> + H p &nbsp;&nbsp;&nbsp;&nbsp; overstress ⟨|σ| − σ<sub>y</sub>(p)⟩<br>
+      Bingham: &nbsp; ṗ = ⟨|σ| − σ<sub>y</sub>⟩ / η &nbsp;&nbsp;&nbsp;&nbsp;
+      Perzyna: &nbsp; ṗ = ε̇<sub>0</sub> ⟨(|σ| − σ<sub>y</sub>) / σ<sub>y</sub>⟩<sup>n</sup> &nbsp;&nbsp;&nbsp;&nbsp;
+      ε̇<sup>p</sup> = ṗ sign(σ)
+    </div>
+    <ul>
+      <li>⟨x⟩ = max(x, 0): inside the elastic domain (|σ| ≤ σ<sub>y</sub>) there is no plastic flow at all, whatever the time.</li>
+      <li><b>Bingham</b> (originally for viscoplastic fluids such as paints and muds): the overstress is proportional to the plastic strain rate, with the viscosity η (MPa·s).</li>
+      <li><b>Perzyna</b> (1966) generalised it to f(σ)/σ<sub>y</sub> raised to a power n, which is the form used in most finite element codes. To compare like with like, ε̇<sub>0</sub> is computed here so that both laws give the same overstress at the reference rate ε̇<sub>ref</sub>: ε̇<sub>0</sub> = ε̇<sub>ref</sub> / (η ε̇<sub>ref</sub>/σ<sub>y0</sub>)<sup>n</sup>.</li>
+      <li><b>Rate-independent limit</b>: η → 0 (here η = 10<sup>−3</sup> MPa·s). The stress stays on the yield surface |σ| = σ<sub>y</sub>(p): this is classical plasticity with linear isotropic hardening H.</li>
+      <li>In tension at a constant rate the flow stress tends to σ<sub>y</sub> + η ε̇ (Bingham) or σ<sub>y</sub> [1 + (ε̇/ε̇<sub>0</sub>)<sup>1/n</sup>] (Perzyna).</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Tension at several rates.</b> The curves start at the same elastic line and rise above the rate-independent curve by the overstress. In the second plot, Bingham's flow stress grows linearly with the rate (exponentially in the log axis): its rate sensitivity is far too strong over several decades. Perzyna's grows as a power: the two agree only near ε̇<sub>ref</sub>.</p>
+    <p><b>Creep.</b> The default stresses are below σ<sub>y0</sub>, just above it, and well above it. Below σ<sub>y0</sub> nothing happens: a threshold model does not creep below its yield stress, unlike Norton (EVP1). Above it the material creeps, and since σ<sub>y</sub> grows with p, the creep stops when σ<sub>y0</sub> + H p reaches the applied stress. Set H = 0 to get unbounded steady creep.</p>
+    <p><b>Relaxation.</b> The stress relaxes towards the yield stress σ<sub>y</sub>(p), not to zero: the overstress disappears and the elastic domain remains. Bingham relaxes exponentially, with the time constant η/(E + H); Perzyna more slowly at the end, because its rate falls as the overstress to the power n.</p>
+    <p><b>Strain cycles.</b> Faster cycling gives larger loops. With isotropic hardening only there is no Bauschinger effect; for that, a back stress is needed (EVP3).</p>
+    <p class="note">Parameters are illustrative. The rate-independent model is the limit of both laws for η → 0 or ε̇<sub>0</sub> → ∞, which is how many codes regularise rate-independent plasticity.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+EVPPage({
+  mat: [
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+    { id: 'sy', label: 'σ<sub>y0</sub>', name: 'σy0', unit: 'MPa', value: 200, gt: 0 },
+    { id: 'H', label: 'H (hardening)', name: 'H', unit: 'MPa', value: 2000, min: 0 },
+    { id: 'eta', label: 'η (Bingham)', name: 'η', unit: 'MPa·s', value: 100000, gt: 0 },
+    { id: 'n', label: 'n (Perzyna)', name: 'n', unit: '–', value: 4, min: 1, max: 30 },
+    { id: 'eref', label: 'ε̇<sub>ref</sub> (same overstress)', name: 'ε̇ref', unit: '1/s', value: 1e-3, gt: 0 },
+  ],
+  models: (m) => {
+    const e0 = m.eref / Math.pow(m.eta * m.eref / m.sy, m.n);
+    return [
+      { name: 'Bingham', make: () => VP.Bingham({ E: m.E, sy: m.sy, H: m.H, eta: m.eta }) },
+      { name: `Perzyna (ε̇0 = ${e0.toPrecision(3)} /s)`, make: () => VP.Perzyna({ E: m.E, sy: m.sy, H: m.H, e0, n: m.n }) },
+      { name: 'Rate-independent', make: () => VP.Bingham({ E: m.E, sy: m.sy, H: m.H, eta: 1e-3 }) },
+    ];
+  },
+  tests: ['rates', 'creep', 'relax', 'cycles'],
+  defaults: { emax: 2, r1: 1e-5, r2: 1e-4, r3: 1e-3, c1: 180, c2: 230, c3: 280, csr: 10, ct: 1000, e0: 1, rr: 1e-3, rt: 1000, ea: 0.5, q1: 1e-5, q2: 1e-3, qN: 3, qh: 0 },
+  check: (m, test, v) => (test === 'rates' && m.eta * v.r3 > 50 * m.sy ? `At ε̇3 the Bingham overstress η ε̇ = ${Math.round(m.eta * v.r3)} MPa is unrealistic; lower ε̇3 or η.` : null),
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

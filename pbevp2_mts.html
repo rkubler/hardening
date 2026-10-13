@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mechanical Threshold Stress model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP2 · Physics-based elastoviscoplastic models</p>
+  <h1>Mechanical Threshold Stress (Follansbee–Kocks, 1988)</h1>
+  <p class="lede">The flow stress is the mechanical threshold, the stress needed to move dislocations at 0 K, reduced by thermal activation. The threshold is an internal variable that evolves with the strain and depends on the strain-rate and temperature history, not only on their current values. Copper is compared with the same metal plus an intrinsic (Peierls-type) barrier, as in BCC metals.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ = σ<sub>a</sub> + (μ(T)/μ<sub>0</sub>) [ s<sub>i</sub>(ε̇, T) σ̂<sub>i</sub> + s<sub>e</sub>(ε̇, T) σ̂<sub>e</sub> ]<br>
+      s<sub>j</sub> = [ 1 − ( k T ln(ε̇<sub>0</sub>/ε̇) / (g<sub>0j</sub> μ b³) )<sup>1/q<sub>j</sub></sup> ]<sup>1/p<sub>j</sub></sup><br>
+      dσ̂<sub>e</sub>/dε<sub>p</sub> = θ<sub>0</sub>(ε̇) [ 1 − tanh(α σ̂<sub>e</sub>/σ̂<sub>es</sub>) / tanh α ], &nbsp;&nbsp;
+      σ̂<sub>es</sub> = σ̂<sub>es0</sub> (ε̇/ε̇<sub>0</sub>)<sup>kT/(g<sub>0es</sub> μ b³)</sup>
+    </div>
+    <ul>
+      <li><b>σ<sub>a</sub></b>: athermal stress (grain boundaries, long-range fields). <b>σ̂<sub>i</sub></b>: intrinsic threshold (Peierls stress, solutes), zero for pure copper. <b>σ̂<sub>e</sub></b>: threshold of the dislocation interactions, the internal variable, which starts at zero in annealed material.</li>
+      <li><b>s<sub>j</sub></b> ≤ 1 is the fraction of the threshold that must still be supplied by the stress after thermal activation. <b>g<sub>0j</sub></b> is the normalised activation energy: a small g<sub>0</sub> gives an obstacle easily crossed by thermal activation, hence strongly dependent on T and ε̇. The exponents are p = 2/3, q = 1 for σ̂<sub>e</sub> and p = 1/2, q = 3/2 for σ̂<sub>i</sub>; ε̇<sub>0</sub> = 10<sup>7</sup> /s.</li>
+      <li><b>θ<sub>0</sub></b> = a<sub>0</sub> + 12 ln ε̇ + 1.696 ε̇<sup>1/2</sup> (MPa) is the stage II hardening rate. The saturation threshold σ̂<sub>es</sub> grows with the rate and decreases with the temperature: this is dynamic recovery, which gives stage III.</li>
+      <li>μ(T) = μ<sub>0</sub> − D / (exp(T<sub>0</sub>/T) − 1), with μ<sub>0</sub> = 47.3 GPa, D = 2.4 GPa, T<sub>0</sub> = 130 K for copper, and b = 0.255 nm.</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>Kocks, Argon and Ashby described plastic flow as dislocations crossing obstacles with the help of thermal fluctuations. The threshold σ̂ is the stress that would move them without thermal help, at 0 K. Temperature and rate enter in two separate places: in the kinetics s(ε̇, T), which acts instantly, and in the evolution of σ̂<sub>e</sub>, which depends on the history. Measuring σ̂ by reloading at 77 K after a prestrain at another rate or temperature is how Follansbee and Kocks separated the two.</p>
+    <h2>What to look for</h2>
+    <p><b>Rate jump.</b> After the jump to the fast rate, the stress rises at once (the kinetic part), then follows a curve below the monotonic fast curve, because the threshold built at the slow rate is lower. After the jump back, it stays above the monotonic slow curve. The tiles give both differences: the stress depends on the path, unlike Zerilli–Armstrong (PB-EVP1).</p>
+    <p><b>Kocks–Mecking plot.</b> θ = dσ/dε<sub>p</sub> against σ decreases from about θ<sub>0</sub> towards zero at the saturation threshold (stage III); the tanh form makes the decrease slightly curved. The fast curve extends to higher stresses, because the saturation threshold is higher at high rate. With the intrinsic barrier the curves are shifted to higher stresses by the thermal part of σ̂<sub>i</sub>, which does not harden.</p>
+    <p><b>Temperatures.</b> For copper the yield stress is almost athermal and the hardening falls with the temperature. With an intrinsic barrier (second material), the yield stress rises strongly at low temperature and high rate, as in BCC metals.</p>
+    <p><b>Relaxation.</b> The relaxed stress depends on how long the plastic strain rate takes to fall: a few percent in 1000 s at room temperature, more when the temperature is raised.</p>
+    <h2>Original reference</h2>
+    <p>P. S. Follansbee and U. F. Kocks, “A constitutive description of the deformation of copper based on the use of the mechanical threshold stress as an internal state variable”, <i>Acta Metallurgica</i> 36 (1988) 81–93. Thermal activation: U. F. Kocks, A. S. Argon and M. F. Ashby, “Thermodynamics and kinetics of slip”, <i>Progress in Materials Science</i> 19 (1975) 1–288.</p>
+    <p class="note">The copper constants follow Follansbee and Kocks; the intrinsic barrier of the second material is illustrative. Constant temperature, small-strain uniaxial model.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const mts = (m, si, T) => VP.MTS({ E: m.E, T, sa: m.sa, si, g0i: m.g0i, ses0: m.ses0, g0es: m.g0es, g0e: m.g0e, e0: 1e7,
+  a0: m.a0, a1: 12, a2: 1.696, alpha: m.alpha, mu0: 47300, D: 2400, T0: 130, b: 2.55e-10 });
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, relaxation)', name: 'T', unit: 'K', value: 298, gt: 0, max: 1300 },
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 124000, gt: 0 },
+    { id: 'sa', label: 'σ<sub>a</sub> (athermal)', name: 'σa', unit: 'MPa', value: 40, min: 0 },
+    { id: 'g0e', label: 'g<sub>0e</sub>', name: 'g0e', unit: '–', value: 1.6, gt: 0 },
+    { id: 'a0', label: 'θ<sub>0</sub>: a<sub>0</sub>', name: 'a0', unit: 'MPa', value: 2390, min: 0 },
+    { id: 'ses0', label: 'σ̂<sub>es0</sub>', name: 'σ̂es0', unit: 'MPa', value: 770, gt: 0 },
+    { id: 'g0es', label: 'g<sub>0es</sub>', name: 'g0es', unit: '–', value: 0.2, gt: 0 },
+    { id: 'alpha', label: 'α (tanh)', name: 'α', unit: '–', value: 2, gt: 0 },
+    { id: 'si', label: 'Intrinsic barrier σ̂<sub>i</sub> (second material)', name: 'σ̂i', unit: 'MPa', value: 800, min: 0 },
+    { id: 'g0i', label: 'g<sub>0i</sub>', name: 'g0i', unit: '–', value: 0.3, gt: 0 },
+  ],
+  models: (m) => [
+    { name: 'Cu, no intrinsic barrier', make: () => mts(m, 0, m.T) },
+    { name: `intrinsic barrier ${m.si} MPa`, make: () => mts(m, m.si, m.T) },
+  ],
+  thermal: (m) => [
+    { name: 'Cu, no intrinsic barrier', make: (T) => mts(m, 0, T) },
+    { name: `intrinsic barrier ${m.si} MPa`, make: (T) => mts(m, m.si, T) },
+  ],
+  dstrain: 1e-4,
+  tests: ['jump', 'temps', 'rates', 'relax'],
+  defaults: { ja: 1e-3, jb: 1e3, j1: 10, j2: 20, j3: 30, emax: 30, T1: 77, T2: 298, T3: 600, tr1: 1e-3, tr2: 1e3, r1: 1e-3, r2: 1, r3: 1e3, e0: 10, rr: 1e-3, rt: 1000 },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

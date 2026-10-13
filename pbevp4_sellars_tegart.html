@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sellars–Tegart (Garofalo) model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP4 · Physics-based elastoviscoplastic models</p>
+  <h1>Sellars–Tegart (1966) and Garofalo (1963): the hyperbolic sine law</h1>
+  <p class="lede">The law of hot working and creep: the strain rate grows as a power of the stress at low stress and exponentially at high stress, and temperature and rate combine into one parameter, the Zener–Hollomon parameter Z. All steady-state curves at different temperatures and rates fall on a single master curve.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      Steady state: &nbsp; Z = ε̇ exp(Q/RT) = A [sinh(α σ)]<sup>n</sup> &nbsp;&nbsp;⇔&nbsp;&nbsp; σ = (1/α) asinh[(Z/A)<sup>1/n</sup>]<br>
+      Transient (used here): &nbsp; ε̇<sub>p</sub> = A exp(−Q/RT) [sinh(α |σ| / s)]<sup>n</sup>, &nbsp;&nbsp; ds/dε<sub>p</sub> = h (1 − s), &nbsp; s(0) = s<sub>0</sub>
+    </div>
+    <ul>
+      <li><b>Q</b> is the activation energy of the deformation, close to that of self-diffusion in the steady-state regime (about 140–160 kJ/mol for aluminium). R = 8.314 J/(mol K).</li>
+      <li><b>α</b> (1/MPa) sets where the law changes regime. For α σ &lt; 0.8, sinh(ασ) ≈ ασ and ε̇ ∝ σ<sup>n</sup> (power-law creep, the Norton law). For α σ &gt; 1.2, sinh(ασ) ≈ e<sup>ασ</sup>/2 and ε̇ ∝ exp(nασ) (power-law breakdown, the exponential law of hot working).</li>
+      <li>Z, the temperature-compensated strain rate, is the single variable of the steady state: a high temperature is equivalent to a low rate.</li>
+      <li>Garofalo's law describes the steady state only. To describe the transient towards it, a structure variable s is added here (as in Anand's model, 1982): s rises from s<sub>0</sub> to 1 over a strain of about 3/h (3 % here), so that the stress hardens to the Garofalo value.</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>At high temperature (above about half the melting temperature) dislocations climb by diffusion and the structure reaches a steady state, where hardening by storage is balanced by recovery and, in some metals, recrystallisation. The rate is then controlled by diffusion, hence the Arrhenius term in Q. Garofalo noticed that the minimum creep rate of many metals follows a sinh law over the whole stress range, joining the power law and the exponential law. Sellars and Tegart showed that the same equation describes the peak or steady stress of hot torsion and compression, with Z as the variable, and it became the standard law of hot forming.</p>
+    <h2>What to look for</h2>
+    <p><b>Zener–Hollomon.</b> In the first plot, the steady stress against the rate gives one curve per temperature, close to the dashed steady-state equation. In the second plot, against log Z, all points from the three temperatures lie on one master curve. The slope increases at high Z: this is the change from power law to exponential law.</p>
+    <p><b>Temperatures.</b> The curves rise with a short transient (the structure variable), then flatten to a steady stress: no work hardening beyond a few percent, the typical hot-working curve. The flow stress drops quickly with the temperature.</p>
+    <p><b>Creep.</b> Primary creep while s rises, then steady creep at the Garofalo rate once the creep strain exceeds about 3/h. At these low stresses (ασ &lt; 0.4) the steady rate is close to a power law of exponent n: the second plot shows the rates becoming constant.</p>
+    <p><b>Rate jump.</b> The stress jumps up, then slowly reaches the fast steady value, without the history effect of the dislocation-density models: s tends to 1 whatever the rate.</p>
+    <h2>Original references</h2>
+    <p>C. M. Sellars and W. J. McG. Tegart, “La relation entre la résistance et la structure dans la déformation à chaud”, <i>Mémoires Scientifiques de la Revue de Métallurgie</i> 63 (1966) 731–746.</p>
+    <p>F. Garofalo, “An empirical relation defining the stress dependence of minimum creep rate in metals”, <i>Transactions of the Metallurgical Society of AIME</i> 227 (1963) 351–356.</p>
+    <p>C. Zener and J. H. Hollomon, “Effect of strain rate upon plastic flow of steel”, <i>Journal of Applied Physics</i> 15 (1944) 22–32. Structure variable: L. Anand, <i>Journal of Engineering Materials and Technology</i> 104 (1982) 12–17.</p>
+    <p class="note">Parameters are of the order of those of pure aluminium in hot working. The elastic modulus is kept constant. Small-strain uniaxial model.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const st = (m, T) => VP.SellarsTegart({ E: m.E, T, A: m.A, alpha: m.alpha, n: m.n, Q: m.Q, s0: m.s0, h: m.h });
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, creep, relaxation)', name: 'T', unit: 'K', value: 673, gt: 0, max: 2000 },
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 55000, gt: 0 },
+    { id: 'A', label: 'A', name: 'A', unit: '1/s', value: '6e9', gt: 0 },
+    { id: 'alpha', label: 'α', name: 'α', unit: '1/MPa', value: 0.045, gt: 0 },
+    { id: 'n', label: 'n', name: 'n', unit: '–', value: 4.2, gt: 0, max: 20 },
+    { id: 'Q', label: 'Q', name: 'Q', unit: 'kJ/mol', value: 156, gt: 0 },
+    { id: 's0', label: 's<sub>0</sub> (initial structure)', name: 's0', unit: '–', value: 0.5, gt: 0, max: 1 },
+    { id: 'h', label: 'h (transient)', name: 'h', unit: '–', value: 100, min: 0 },
+  ],
+  models: (m) => [{ name: 'Sellars–Tegart', make: () => st(m, m.T) }],
+  thermal: (m) => [{ name: 'Sellars–Tegart', make: (T) => st(m, T) }],
+  zener: {
+    Q: (m) => m.Q * 1000,
+    ss: (m, r, T) => Math.asinh(Math.pow(r / (m.A * Math.exp(-m.Q * 1000 / (Viscoplastic.Rgas * T))), 1 / m.n)) / m.alpha,
+  },
+  dstrain: 1e-4,
+  tests: ['zener', 'temps', 'creep', 'rates', 'jump', 'relax'],
+  defaults: { emax: 50, z1: 1e-3, z2: 10, T1: 573, T2: 673, T3: 773, tr1: 1e-3, tr2: 10, r1: 1e-3, r2: 1e-1, r3: 10,
+    c1: 3, c2: 5, c3: 7, csr: 1, ct: 1e4, ja: 1e-3, jb: 1e-1, j1: 10, j2: 20, j3: 30, e0: 10, rr: 1e-2, rt: 100 },
+  check: (m, test, v) => (test === 'creep' && m.s0 < 0.2 ? 'Use s0 ≥ 0.2 for the creep test.' : null),
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

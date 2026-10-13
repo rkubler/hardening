@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steinberg–Guinan model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP5 · Physics-based elastoviscoplastic models</p>
+  <h1>Steinberg–Guinan (1980) and Steinberg–Lund (1989)</h1>
+  <p class="lede">A model for metals under shock and explosive loading, where the pressure reaches tens of GPa. The yield stress scales with the shear modulus, which grows with the pressure and falls with the temperature, to zero at melting. The original model is rate-independent, which is valid above about 10⁵ /s; Steinberg and Lund added a thermally activated term to cover rates down to 10⁻⁴ /s. Tantalum-like parameters.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      Steinberg–Guinan: &nbsp; Y = Y<sub>0</sub> [1 + β(ε<sub>p</sub> + ε<sub>i</sub>)]<sup>n</sup> · G(P, T)/G<sub>0</sub>, &nbsp;&nbsp; Y<sub>0</sub>[1 + β(ε<sub>p</sub> + ε<sub>i</sub>)]<sup>n</sup> ≤ Y<sub>max</sub><br>
+      G(P, T)/G<sub>0</sub> = 1 + (G′<sub>P</sub>/G<sub>0</sub>) P/η<sup>1/3</sup> + (G′<sub>T</sub>/G<sub>0</sub>)(T − 300), &nbsp;&nbsp; Y = 0 for T ≥ T<sub>m</sub><br>
+      Steinberg–Lund: &nbsp; Y = [Y<sub>T</sub>(ε̇<sub>p</sub>, T) + Y<sub>A</sub> f(ε<sub>p</sub>)] G(P, T)/G<sub>0</sub>, &nbsp;&nbsp;
+      ε̇<sub>p</sub> = { (1/C<sub>1</sub>) exp[ (2U<sub>k</sub>/kT)(1 − Y<sub>T</sub>/Y<sub>P</sub>)² ] + C<sub>2</sub>/Y<sub>T</sub> }<sup>−1</sup>
+    </div>
+    <ul>
+      <li><b>Y<sub>0</sub>, β, n, Y<sub>max</sub></b>: power-law work hardening with a cap. <b>G′<sub>P</sub>/G<sub>0</sub></b> (1/GPa) and <b>G′<sub>T</sub>/G<sub>0</sub></b> (1/K, here entered as a positive softening coefficient): pressure and temperature derivatives of the shear modulus. η = ρ/ρ<sub>0</sub> is the compression, computed here as 1 + P/K<sub>0</sub>.</li>
+      <li>The yield stress has the same pressure and temperature dependence as the shear modulus: Y/G is constant at a given plastic strain. This is the central assumption of the model, supported by measurements on many metals.</li>
+      <li>In Steinberg–Lund, <b>Y<sub>T</sub></b> is the thermal part, from the Hoge–Mukherjee kink-pair model of BCC metals: <b>U<sub>k</sub></b> is the energy of a kink pair, <b>Y<sub>P</sub></b> the Peierls stress, <b>C<sub>1</sub></b> a frequency factor and <b>C<sub>2</sub></b> a phonon drag coefficient, which limits the rate at high stress. <b>Y<sub>A</sub></b> is the athermal part.</li>
+      <li>A uniaxial test under a superposed pressure P is simulated by the third model: P only acts through G(P, T).</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>Under shock loading the plastic strain rate is so high (10<sup>5</sup> to 10<sup>8</sup> /s) that, for most metals, the flow stress has reached a plateau where the thermal part is fully activated: hence the rate-independent form. What matters then is the pressure, which stiffens the lattice, and the temperature, which grows behind the shock, up to melting. Steinberg and Lund extended the model to lower rates for BCC metals like tantalum, whose yield stress at low rate depends strongly on the rate through the Peierls mechanism.</p>
+    <h2>What to look for</h2>
+    <p><b>Strain rates.</b> Steinberg–Guinan gives the same curve at every rate: a flat line in the second plot. Steinberg–Lund has a low yield stress at 10<sup>−3</sup> /s that rises with the rate, and reaches the Steinberg–Guinan curve at high rate. Under 20 GPa of pressure, the whole Steinberg–Guinan curve is about 30 % higher.</p>
+    <p><b>Temperatures.</b> The Steinberg–Guinan stress decreases linearly with the temperature, through G(T), until melting. The Steinberg–Lund stress drops faster at low temperature, where the thermal part vanishes, then follows the same G(T) slope.</p>
+    <p><b>Relaxation.</b> Steinberg–Guinan does not relax: the stress stays on the yield surface. Steinberg–Lund relaxes towards its athermal part.</p>
+    <p><b>Rate jump.</b> Steinberg–Lund follows the fast curve at once, without history; Steinberg–Guinan does not see the jump at all.</p>
+    <h2>Original references</h2>
+    <p>D. J. Steinberg, S. G. Cochran and M. W. Guinan, “A constitutive model for metals applicable at high-strain rate”, <i>Journal of Applied Physics</i> 51 (1980) 1498–1504.</p>
+    <p>D. J. Steinberg and C. M. Lund, “A constitutive model for strain rates from 10<sup>−4</sup> to 10<sup>6</sup> s<sup>−1</sup>”, <i>Journal of Applied Physics</i> 65 (1989) 1528–1533.</p>
+    <p class="note">Tantalum-like parameters, rounded. The pressure dependence of the melting temperature is not included. Constant temperature, small-strain uniaxial model.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const sgp = (m, T, P) => ({ E: m.E, T, P, K0: m.K0, Y0: m.Y0, Ymax: m.Ymax, beta: m.beta, n: m.n, ei: 0, Ap: m.Ap, Bt: m.Bt, Tm: m.Tm,
+  YA: m.YA, YP: m.YP, C1: m.C1, Uk: m.Uk, C2: m.C2 });
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, relaxation)', name: 'T', unit: 'K', value: 300, gt: 0, max: 5000 },
+    { id: 'P', label: 'P (third model)', name: 'P', unit: 'GPa', value: 20, min: 0, max: 300 },
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 186000, gt: 0 },
+    { id: 'Y0', label: 'Y<sub>0</sub>', name: 'Y0', unit: 'MPa', value: 770, gt: 0 },
+    { id: 'Ymax', label: 'Y<sub>max</sub>', name: 'Ymax', unit: 'MPa', value: 1100, gt: 0 },
+    { id: 'beta', label: 'β', name: 'β', unit: '–', value: 10, min: 0 },
+    { id: 'n', label: 'n', name: 'n', unit: '–', value: 0.1, min: 0, max: 1 },
+    { id: 'Ap', label: 'G′<sub>P</sub>/G<sub>0</sub>', name: 'G′P/G0', unit: '1/GPa', value: 0.0145, min: 0 },
+    { id: 'Bt', label: '−G′<sub>T</sub>/G<sub>0</sub>', name: '−G′T/G0', unit: '1/K', value: '1.3e-4', min: 0 },
+    { id: 'K0', label: 'K<sub>0</sub> (bulk modulus)', name: 'K0', unit: 'GPa', value: 194, gt: 0 },
+    { id: 'Tm', label: 'T<sub>m</sub>', name: 'Tm', unit: 'K', value: 3250, gt: 0 },
+    { id: 'YA', label: 'Steinberg–Lund: Y<sub>A</sub>', name: 'YA', unit: 'MPa', value: 375, min: 0 },
+    { id: 'YP', label: 'Y<sub>P</sub> (Peierls)', name: 'YP', unit: 'MPa', value: 800, gt: 0 },
+    { id: 'Uk', label: 'U<sub>k</sub>', name: 'Uk', unit: 'eV', value: 0.31, gt: 0 },
+    { id: 'C1', label: 'C<sub>1</sub>', name: 'C1', unit: '1/s', value: 7.1e5, gt: 0 },
+    { id: 'C2', label: 'C<sub>2</sub> (drag)', name: 'C2', unit: 'MPa·s', value: '1.2e-3', gt: 0 },
+  ],
+  models: (m) => [
+    { name: 'Steinberg–Lund', make: () => VP.SteinbergLund(sgp(m, m.T, 0)) },
+    { name: 'Steinberg–Guinan', make: () => VP.SteinbergGuinan(sgp(m, m.T, 0)) },
+    { name: `Steinberg–Guinan, P = ${m.P} GPa`, make: () => VP.SteinbergGuinan(sgp(m, m.T, m.P)) },
+  ],
+  thermal: (m) => [
+    { name: 'Steinberg–Lund', make: (T) => VP.SteinbergLund(sgp(m, T, 0)) },
+    { name: 'Steinberg–Guinan', make: (T) => VP.SteinbergGuinan(sgp(m, T, 0)) },
+  ],
+  dstrain: 1e-4,
+  tests: ['rates', 'temps', 'relax', 'jump'],
+  defaults: { emax: 20, r1: 1e-3, r2: 1, r3: 1e4, T1: 300, T2: 1500, T3: 3000, tr1: 1e-3, tr2: 1e4, e0: 2, rr: 1, rt: 100, ja: 1e-3, jb: 1e4, j1: 5, j2: 10, j3: 15 },
+  check: (m, test, v) => (m.T >= m.Tm || (test === 'temps' && v.T3 >= m.Tm) ? 'The temperatures must stay below the melting temperature Tm.' : null),
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

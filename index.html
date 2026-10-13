@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hardening simulators</title>
-<meta name="description" content="Interactive simulators of cyclic hardening behaviour of metals, for teaching.">
+<meta name="description" content="Interactive simulators of cyclic hardening and rate-dependent (elastoviscoplastic) behaviour of metals, for teaching.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <style>
 main{max-width:920px;padding-top:48px}
 h1{font-size:34px}
-.lede{max-width:64ch;margin-bottom:28px}
+.lede{max-width:none;margin-bottom:28px}
 .group{margin:30px 0 0}
 .group > h2{font:500 13px/1.3 var(--sans);color:var(--ink2);margin:0 0 10px}
 .list{display:grid;gap:12px}
@@ -20,6 +20,9 @@ a.card{display:grid;grid-template-columns:58px minmax(0,1fr);gap:16px;align-item
 a.card:hover{border-color:var(--ink2)}
 a.card:focus-visible{outline:2px solid var(--path);outline-offset:2px}
 .key{font:400 22px/1 var(--serif);color:var(--path);padding-top:3px}
+.key-sm{font-size:16px;line-height:1.15}
+.lede a{color:var(--path)}
+.lede + .lede{margin-top:-12px}
 a.card h3{font:500 17px/1.3 var(--sans);margin:0 0 3px;color:var(--ink)}
 a.card p{margin:0;color:var(--ink2);font-size:14.5px}
 .intro-anim{margin:8px 0 0}
@@ -35,7 +38,8 @@ footer a{color:var(--path)}
 <body>
 <main>
   <h1>Hardening simulators</h1>
-  <p class="lede">Interactive simulators of the cyclic hardening of metals, written for teaching. Each one runs entirely in the browser: change the material parameters or the loading, run, and compare the models.</p>
+  <p class="lede">Interactive simulators of the cyclic hardening of metals, written for teaching. Elastoviscoplastic models, phenomenological and physics-based, are also given to describe the rate dependence of plastic flow: creep, relaxation, strain-rate and temperature effects. Each one runs entirely in the browser: change the material parameters or the loading, run, and compare the models.</p>
+  <p class="lede">The content is based on the course material of two MSc courses, 1. Mechanics of Materials and 2. Kinetic Processes and Mechanical Behavior in Materials Science, taught in the <a href="https://artsetmetiers.fr/fr/master-science-am2s-advanced-manufacturing-and-materials-science">MSc AM2S (Advanced Manufacturing and Materials Science)</a> at Arts et Métiers Science and Technology.</p>
 
 
   <section class="group intro-anim">
@@ -126,6 +130,51 @@ footer a{color:var(--path)}
   </section>
 
   <section class="group">
+    <h2>Elastoviscoplastic (rate-dependent) models</h2>
+    <div class="list">
+      <a class="card" href="evp1_norton.html"><span class="key">EVP1</span><div>
+        <h3>Norton power law (1929)</h3>
+        <p>Plastic strain rate as a power of the stress, no elastic domain. Steady creep, relaxation and rate effect, compared with the closed-form solutions.</p></div></a>
+      <a class="card" href="evp2_bingham_perzyna.html"><span class="key">EVP2</span><div>
+        <h3>Bingham (1922) and Perzyna (1966) overstress models</h3>
+        <p>Viscous flow above a yield stress, linear or power law. No creep below the yield stress, relaxation down to it, and the rate-independent limit.</p></div></a>
+      <a class="card" href="evp3_chaboche_viscoplastic.html"><span class="key">EVP3</span><div>
+        <h3>Unified viscoplasticity (Chaboche, 1989)</h3>
+        <p>Armstrong–Frederick back stress, Voce hardening and a Norton flow rule. Loops at two rates, holds, time-dependent ratcheting, primary creep.</p></div></a>
+      <a class="card" href="evp4_bodner_partom.html"><span class="key">EVP4</span><div>
+        <h3>Bodner–Partom (1975)</h3>
+        <p>No yield surface: an exponential flow law and a hardening variable driven by plastic work. Smooth yielding, primary creep, cyclic hardening.</p></div></a>
+      <a class="card" href="evp5_johnson_cook.html"><span class="key">EVP5</span><div>
+        <h3>Johnson–Cook (1983)</h3>
+        <p>Strain hardening × logarithmic rate term × thermal softening, for high strain rates. Rate sweep up to 10⁴ /s, the cut-off below ε̇0, and relaxation.</p></div></a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Physics-based elastoviscoplastic models</h2>
+    <div class="list">
+      <a class="card" href="pbevp1_zerilli_armstrong.html"><span class="key key-sm">PB-<br>EVP1</span><div>
+        <h3>Zerilli–Armstrong (1987)</h3>
+        <p>Dislocation mechanics flow stress, with FCC and BCC forms: temperature and rate act on hardening in copper, on the yield stress in iron.</p></div></a>
+      <a class="card" href="pbevp2_mts.html"><span class="key key-sm">PB-<br>EVP2</span><div>
+        <h3>Mechanical Threshold Stress (Follansbee–Kocks, 1988)</h3>
+        <p>Thermal activation over a threshold stress that evolves with strain. Rate jumps reveal the effect of the strain-rate history.</p></div></a>
+      <a class="card" href="pbevp3_kocks_mecking.html"><span class="key key-sm">PB-<br>EVP3</span><div>
+        <h3>Kocks–Mecking and Estrin–Mecking (1976–1984)</h3>
+        <p>Dislocation density storage and dynamic recovery, Taylor flow stress, grain size. Stage III, rate jumps, primary and steady creep.</p></div></a>
+      <a class="card" href="pbevp4_sellars_tegart.html"><span class="key key-sm">PB-<br>EVP4</span><div>
+        <h3>Sellars–Tegart and Garofalo (1963–1966)</h3>
+        <p>Hyperbolic sine law of hot working and creep. Steady flow stress at several temperatures and rates on one Zener–Hollomon master curve.</p></div></a>
+      <a class="card" href="pbevp5_steinberg_guinan.html"><span class="key key-sm">PB-<br>EVP5</span><div>
+        <h3>Steinberg–Guinan (1980) and Steinberg–Lund (1989)</h3>
+        <p>Shock-loading model: yield stress scaled by the shear modulus, which grows with the pressure and falls to zero at melting. Rate-independent or thermally activated.</p></div></a>
+      <a class="card" href="pbevp6_ptw.html"><span class="key key-sm">PB-<br>EVP6</span><div>
+        <h3>Preston–Tonks–Wallace (2003)</h3>
+        <p>From quasi-static rates to strong shocks: thermal activation, then phonon drag above 10⁷ /s. Rate sweep up to 10⁹ /s.</p></div></a>
+    </div>
+  </section>
+
+  <section class="group">
     <h2>Other behaviours</h2>
     <div class="list">
       <a class="card" href="masing.html"><span class="key">Ma</span><div>
@@ -137,7 +186,7 @@ footer a{color:var(--path)}
   <footer>
     <p class="credits">Author: Dr Régis Kubler, Arts et Métiers Institute of Technology. Developed with the assistance of Claude Opus 5.5 (Anthropic), October 2026.
       Code: <a href="LICENSE">MIT</a> · Documentation: <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</p>
-    <p>All parameters are illustrative and do not represent a specific material. Simulators A to E7 and D1 to D3 use a thin-walled tube model in tension–torsion; M1 to M5 are uniaxial. All use explicit integration in small increments.</p>
+    <p>All parameters are illustrative and do not represent a specific material. Simulators A to E7 and D1 to D3 use a thin-walled tube model in tension–torsion; M1 to M5, EVP1 to EVP5 and PB-EVP1 to PB-EVP6 are uniaxial. A to D3 use explicit integration in small increments; the EVP and PB-EVP models integrate in time, implicitly in the plastic strain increment, at constant temperature.</p>
   </footer>
 </main>
 <script>

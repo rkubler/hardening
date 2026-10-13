@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kocks–Mecking and Estrin–Mecking models – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP3 · Physics-based elastoviscoplastic models</p>
+  <h1>Kocks–Mecking (1976, 1981) and Estrin–Mecking (1984)</h1>
+  <p class="lede">A one-internal-variable model: the dislocation density ρ. Dislocations are stored by athermal processes and annihilated by dynamic recovery, which depends on the strain rate and the temperature. The flow stress follows from ρ through the Taylor relation. Estrin and Mecking added the storage at grain boundaries, which makes fine-grained materials harden faster.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ = σ<sub>0</sub> + M α μ(T) b √ρ · (ε̇<sub>p</sub>/ε̇<sub>0</sub>)<sup>1/m</sup><br>
+      dρ/dε<sub>p</sub> = M [ 1/(b d) + k<sub>1</sub> √ρ − k<sub>2</sub>(ε̇<sub>p</sub>, T) ρ ], &nbsp;&nbsp;
+      k<sub>2</sub> = k<sub>20</sub> (ε̇<sub>p</sub>/ε̇<sub>0</sub>)<sup>−1/n</sup><br>
+      1/m = k T / (A<sub>1</sub> μ b³), &nbsp;&nbsp; 1/n = k T / (A<sub>2</sub> μ b³)
+    </div>
+    <ul>
+      <li><b>M</b> = 3.06 is the Taylor factor of an FCC polycrystal, <b>α</b> ≈ 0.3 the dislocation interaction constant, <b>b</b> = 0.255 nm the Burgers vector, μ(T) the shear modulus of copper (as in PB-EVP2).</li>
+      <li><b>k<sub>1</sub>√ρ</b>: storage. A dislocation travels a distance proportional to the forest spacing 1/√ρ before it is stopped. <b>1/(b d)</b>: storage at grain boundaries, with the grain size d (Estrin–Mecking). <b>k<sub>2</sub> ρ</b>: dynamic recovery by cross-slip and annihilation, a thermally activated process. k<sub>2</sub> is larger at low rate and high temperature.</li>
+      <li><b>1/m</b> is the instantaneous rate sensitivity (small, about 0.005 at room temperature). <b>1/n</b> is the rate sensitivity of the recovery, larger, which makes the saturation stress depend on the rate.</li>
+      <li>Without the grain size term, the stage III hardening rate is linear in the stress: θ = θ<sub>II</sub>(1 − σ/σ<sub>s</sub>), with the saturation stress σ<sub>s</sub> ∝ k<sub>1</sub>/k<sub>2</sub>. This is the Voce law, derived from the dislocation density.</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>Kocks (1976) proposed that the hardening of FCC metals is the balance between storage and recovery of dislocations, with a single structure variable. Mecking and Kocks (1981) related it to the kinetics of flow, and Estrin and Mecking (1984) wrote the unified form used here. Because the state is ρ, a change of rate or temperature has an instant effect through 1/m, and a delayed effect through k<sub>2</sub>, which needs some strain to change ρ. The same equations give work hardening, steady-state creep and the strain-rate history effect.</p>
+    <h2>What to look for</h2>
+    <p><b>Rate jump.</b> The stress jumps up by a small instantaneous amount, then hardens towards the fast monotonic curve over a few percent of strain. After the jump back, it stays above the slow curve and relaxes towards it. The tiles show the difference with the monotonic curves.</p>
+    <p><b>Kocks–Mecking plot.</b> θ against σ is a straight line in stage III. The fast-rate line ends at a higher stress (less recovery). With grain size storage (Estrin–Mecking) the line starts higher and is curved at low stress.</p>
+    <p><b>Temperatures.</b> The saturation stress falls strongly with the temperature: recovery is thermally activated. The initial yield stress hardly changes.</p>
+    <p><b>Creep.</b> At constant stress, ρ grows until storage and recovery balance at the creep rate: primary creep with a decreasing rate, then steady-state creep. The steady creep rate is very sensitive to the stress.</p>
+    <h2>Original references</h2>
+    <p>U. F. Kocks, “Laws for work-hardening and low-temperature creep”, <i>Journal of Engineering Materials and Technology</i> 98 (1976) 76–85.</p>
+    <p>H. Mecking and U. F. Kocks, “Kinetics of flow and strain-hardening”, <i>Acta Metallurgica</i> 29 (1981) 1865–1875.</p>
+    <p>Y. Estrin and H. Mecking, “A unified phenomenological description of work hardening and creep based on one-parameter models”, <i>Acta Metallurgica</i> 32 (1984) 57–70.</p>
+    <p class="note">Parameters are illustrative, of the order of those of copper. Constant temperature, small-strain uniaxial model.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const km = (m, d, T) => VP.KocksMecking({ E: m.E, T, s0: m.s0, M: 3.06, alpha: m.alpha, b: 2.55e-10, rho0: m.rho0, k1: m.k1, k20: m.k20, d,
+  e0: 1e7, A1: m.A1, A2: m.A2, mu0: 47300, D: 2400, T0: 130 });
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, creep, relaxation)', name: 'T', unit: 'K', value: 298, gt: 0, max: 1300 },
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 124000, gt: 0 },
+    { id: 's0', label: 'σ<sub>0</sub> (friction)', name: 'σ0', unit: 'MPa', value: 10, min: 0 },
+    { id: 'alpha', label: 'α (Taylor)', name: 'α', unit: '–', value: 0.3, gt: 0 },
+    { id: 'rho0', label: 'ρ<sub>0</sub>', name: 'ρ0', unit: '1/m²', value: '1e12', gt: 0 },
+    { id: 'k1', label: 'k<sub>1</sub> (storage)', name: 'k1', unit: '1/m', value: '1.24e8', min: 0 },
+    { id: 'k20', label: 'k<sub>20</sub> (recovery)', name: 'k20', unit: '–', value: 2.2, min: 0 },
+    { id: 'A1', label: 'A<sub>1</sub> (1/m)', name: 'A1', unit: '–', value: 1, gt: 0 },
+    { id: 'A2', label: 'A<sub>2</sub> (1/n)', name: 'A2', unit: '–', value: 0.2, gt: 0 },
+    { id: 'd', label: 'Grain size d (Estrin–Mecking)', name: 'd', unit: 'µm', value: 10, gt: 0 },
+  ],
+  models: (m) => [
+    { name: 'Kocks–Mecking', make: () => km(m, 0, m.T) },
+    { name: `Estrin–Mecking, d = ${m.d} µm`, make: () => km(m, m.d, m.T) },
+  ],
+  thermal: (m) => [
+    { name: 'Kocks–Mecking', make: (T) => km(m, 0, T) },
+    { name: `Estrin–Mecking, d = ${m.d} µm`, make: (T) => km(m, m.d, T) },
+  ],
+  dstrain: 1e-4,
+  tests: ['jump', 'temps', 'rates', 'creep', 'relax'],
+  defaults: { ja: 1e-3, jb: 1e3, j1: 10, j2: 20, j3: 30, emax: 30, T1: 77, T2: 298, T3: 600, tr1: 1e-3, tr2: 1e3, r1: 1e-3, r2: 1, r3: 1e3,
+    c1: 150, c2: 175, c3: 200, csr: 10, ct: 1e4, e0: 10, rr: 1e-3, rt: 1000 },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

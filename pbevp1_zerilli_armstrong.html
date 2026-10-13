@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zerilli–Armstrong model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP1 · Physics-based elastoviscoplastic models</p>
+  <h1>Zerilli–Armstrong (1987)</h1>
+  <p class="lede">A flow-stress law derived from the thermal activation of dislocation motion, with a different form for face-centred cubic (FCC) and body-centred cubic (BCC) metals. In FCC copper the temperature and the strain rate act on the strain hardening; in BCC iron they act on the yield stress. Compare both crystal structures at several temperatures and strain rates.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      FCC: &nbsp; σ = C<sub>0</sub> + C<sub>2</sub> ε<sub>p</sub><sup>1/2</sup> exp(−C<sub>3</sub> T + C<sub>4</sub> T ln ε̇<sub>p</sub>)<br>
+      BCC: &nbsp; σ = C<sub>0</sub> + C<sub>1</sub> exp(−C<sub>3</sub> T + C<sub>4</sub> T ln ε̇<sub>p</sub>) + C<sub>5</sub> ε<sub>p</sub><sup>n</sup>
+    </div>
+    <ul>
+      <li><b>C<sub>0</sub></b> = Δσ′<sub>G</sub> + k ℓ<sup>−1/2</sup> is the athermal part: the stress fields of solutes and of the initial dislocations, plus the Hall–Petch grain size term (ℓ is the grain diameter).</li>
+      <li><b>C<sub>3</sub></b> and <b>C<sub>4</sub></b> (1/K) come from the activation volume and the activation energy of the thermally activated obstacle crossing. The rate sensitivity is C<sub>4</sub> T: it grows with the temperature.</li>
+      <li>The law gives the flow stress as a function of ε<sub>p</sub>, ε̇<sub>p</sub> and T (a mechanical equation of state). Here it is inverted in time: in each step the plastic increment is found so that σ equals the flow stress at the plastic strain rate of the step, which gives creep and relaxation as well as tension.</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>In FCC metals the obstacles that need thermal activation are the forest dislocations, intersected by the moving ones. Their density grows with the strain, so the thermal part multiplies the strain hardening, which grows as ε<sub>p</sub><sup>1/2</sup> (Taylor hardening with a dislocation density proportional to the strain). The initial yield stress hardly depends on the temperature or the rate.</p>
+    <p>In BCC metals the controlling obstacle is the Peierls barrier of the screw dislocations, which exists from the start and does not depend on the strain. The thermal part is then additive and acts on the yield stress, and the hardening term C<sub>5</sub> ε<sub>p</sub><sup>n</sup> is athermal.</p>
+    <h2>What to look for</h2>
+    <p><b>Temperatures.</b> Copper keeps almost the same yield stress at 77, 300 and 600 K, but it hardens much more at low temperature: the curves fan out with the strain. Iron does the opposite: the yield stress rises from about 120 MPa at 300 K to 550 MPa at 77 K, and the curves stay nearly parallel. The second plot shows the flow stress against the temperature at the slow and the fast rate.</p>
+    <p><b>Strain rates.</b> In copper the rate effect is small at low strain and grows with it; in iron it is mostly a shift of the yield stress. The rate sensitivity tile is larger for iron at room temperature.</p>
+    <p><b>Rate jump.</b> The jump test follows the monotonic curve of the new rate at once, in both directions: the stress depends only on the current ε<sub>p</sub>, ε̇<sub>p</sub> and T, not on the path. This is the main difference with the internal-variable models (PB-EVP2, PB-EVP3), where the history matters. The second plot shows the hardening rate against the stress: for copper it falls as 1/σ, for iron it is the derivative of the power law.</p>
+    <p><b>Relaxation.</b> The stress relaxes quickly at first and then slowly, as the plastic strain rate falls through decades of rate.</p>
+    <h2>Original reference</h2>
+    <p>F. J. Zerilli and R. W. Armstrong, “Dislocation-mechanics-based constitutive relations for material dynamics calculations”, <i>Journal of Applied Physics</i> 61 (1987) 1816–1825. The constants are the values given there for OFHC copper and Armco iron (C<sub>0</sub> of iron rounded).</p>
+    <p class="note">Small-strain uniaxial model with constant temperature (no adiabatic heating). The C<sub>4</sub> T ln ε̇ term has no cut-off, so the flow stress keeps decreasing at very slow rates.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const za = (m, mat, T) => (mat === 'fcc'
+  ? VP.ZerilliArmstrong({ E: m.Ecu, T, type: 'fcc', C0: m.c0c, C2: m.zc2, C3: m.c3c, C4: m.c4c })
+  : VP.ZerilliArmstrong({ E: m.Efe, T, type: 'bcc', C0: m.c0f, C1: m.zc1, C3: m.c3f, C4: m.c4f, C5: m.c5, n: m.nf }));
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, relaxation)', name: 'T', unit: 'K', value: 300, gt: 0, max: 1500 },
+    { id: 'Ecu', label: 'Copper (FCC): E', name: 'E (Cu)', unit: 'MPa', value: 124000, gt: 0 },
+    { id: 'c0c', label: 'C<sub>0</sub>', name: 'C0 (Cu)', unit: 'MPa', value: 46.5, min: 0 },
+    { id: 'zc2', label: 'C<sub>2</sub>', name: 'C2', unit: 'MPa', value: 890, min: 0 },
+    { id: 'c3c', label: 'C<sub>3</sub>', name: 'C3 (Cu)', unit: '1/K', value: 0.0028, min: 0 },
+    { id: 'c4c', label: 'C<sub>4</sub>', name: 'C4 (Cu)', unit: '1/K', value: 0.000115, gt: 0 },
+    { id: 'Efe', label: 'Iron (BCC): E', name: 'E (Fe)', unit: 'MPa', value: 211000, gt: 0 },
+    { id: 'c0f', label: 'C<sub>0</sub>', name: 'C0 (Fe)', unit: 'MPa', value: 70, min: 0 },
+    { id: 'zc1', label: 'C<sub>1</sub>', name: 'C1', unit: 'MPa', value: 1033, min: 0 },
+    { id: 'c3f', label: 'C<sub>3</sub>', name: 'C3 (Fe)', unit: '1/K', value: 0.00698, min: 0 },
+    { id: 'c4f', label: 'C<sub>4</sub>', name: 'C4 (Fe)', unit: '1/K', value: 0.000415, gt: 0 },
+    { id: 'c5', label: 'C<sub>5</sub>', name: 'C5', unit: 'MPa', value: 266, min: 0 },
+    { id: 'nf', label: 'n', name: 'n', unit: '–', value: 0.289, gt: 0, max: 1 },
+  ],
+  models: (m) => [
+    { name: 'Cu (FCC)', make: () => za(m, 'fcc', m.T) },
+    { name: 'Fe (BCC)', make: () => za(m, 'bcc', m.T) },
+  ],
+  thermal: (m) => [
+    { name: 'Cu (FCC)', make: (T) => za(m, 'fcc', T) },
+    { name: 'Fe (BCC)', make: (T) => za(m, 'bcc', T) },
+  ],
+  dstrain: 1e-4,
+  tests: ['temps', 'rates', 'jump', 'relax'],
+  defaults: { emax: 20, T1: 77, T2: 300, T3: 600, tr1: 1e-3, tr2: 1e3, r1: 1e-3, r2: 1, r3: 1e3, ja: 1e-3, jb: 1e3, j1: 10, j2: 20, j3: 30, e0: 5, rr: 1e-3, rt: 1000 },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

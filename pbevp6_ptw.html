@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preston–Tonks–Wallace model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">PB-EVP6 · Physics-based elastoviscoplastic models</p>
+  <h1>Preston–Tonks–Wallace (2003)</h1>
+  <p class="lede">A model built to cover strain rates from quasi-static to the 10¹² /s of strong shocks. Below about 10⁷ /s, plastic flow is controlled by thermal activation of dislocations; above, by the drag of phonons on dislocations moving at a large fraction of the shear wave speed, which makes the flow stress grow as a power of the rate. Rates and stresses are scaled by the atomic vibration frequency and the shear modulus.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ = 2 G(T) τ̂, &nbsp;&nbsp; T̂ = T/T<sub>m</sub>, &nbsp;&nbsp; G(T) = G<sub>0</sub>(1 − α T̂), &nbsp;&nbsp; ξ = ½ (4πn/3)<sup>1/3</sup> (G/ρ)<sup>1/2</sup><br>
+      τ̂<sub>s</sub> = max{ s<sub>0</sub> − (s<sub>0</sub> − s<sub>∞</sub>) erf[κ T̂ ln(γξ/ε̇)], &nbsp; s<sub>0</sub> (ε̇/γξ)<sup>β</sup> }<br>
+      τ̂<sub>y</sub> = max{ y<sub>0</sub> − (y<sub>0</sub> − y<sub>∞</sub>) erf[κ T̂ ln(γξ/ε̇)], &nbsp; min[ y<sub>1</sub> (ε̇/γξ)<sup>y<sub>2</sub></sup>, s<sub>0</sub> (ε̇/γξ)<sup>β</sup> ] }<br>
+      τ̂ = τ̂<sub>s</sub> + (s<sub>0</sub> − τ̂<sub>y</sub>)/p · ln{ 1 − [1 − e<sup>−p(τ̂<sub>s</sub>−τ̂<sub>y</sub>)/(s<sub>0</sub>−τ̂<sub>y</sub>)</sup>] exp[ −p θ ψ / ((s<sub>0</sub> − τ̂<sub>y</sub>)(e<sup>p(τ̂<sub>s</sub>−τ̂<sub>y</sub>)/(s<sub>0</sub>−τ̂<sub>y</sub>)</sup> − 1)) ] }
+    </div>
+    <ul>
+      <li>τ̂ = τ/G is the flow stress scaled by the shear modulus; ψ is the equivalent plastic strain. <b>τ̂<sub>y</sub></b> is the yield stress, <b>τ̂<sub>s</sub></b> the saturation stress, both scaled. The last equation integrates a Voce-like hardening law, with initial hardening rate θ (scaled) and the shape parameter p: the flow stress rises from τ̂<sub>y</sub> to τ̂<sub>s</sub>.</li>
+      <li><b>ξ</b> is the atomic vibration frequency (about 8·10<sup>12</sup> /s for copper), with n the number of atoms per unit volume and ρ the density. ε̇/ξ is the scaled strain rate. <b>s<sub>0</sub></b> and <b>y<sub>0</sub></b> are the values at 0 K, <b>s<sub>∞</sub></b> and <b>y<sub>∞</sub></b> those at high temperature, <b>κ</b> and <b>γ</b> set the thermal activation.</li>
+      <li>The power-law terms (ε̇/γξ)<sup>β</sup> and (ε̇/γξ)<sup>y<sub>2</sub></sup> describe the overdriven shock regime. They take over from the thermal terms above about 10<sup>7</sup> to 10<sup>8</sup> /s for copper.</li>
+    </ul>
+    <h2>Physical basis</h2>
+    <p>At low and moderate rates the PTW model is a thermal activation model in the spirit of Follansbee–Kocks, written with an error function that matches the measured temperature and rate dependence of the yield and saturation stresses. Preston, Tonks and Wallace added the strong-shock regime: Wallace's theory of overdriven shocks shows that the flow stress then grows as the rate to a power β ≈ 0.25, measured from the rise time of shock fronts. Scaling the stress by G and the rate by ξ makes the parameters nearly the same for different metals.</p>
+    <h2>What to look for</h2>
+    <p><b>Strain rates.</b> The default sweep runs from 10<sup>−3</sup> to 10<sup>9</sup> /s. In the second plot the stress grows slowly up to about 10<sup>3</sup> /s (thermal activation), then faster as the thermal barrier is overcome near γξ ≈ 10<sup>8</sup> /s, and the power law of the strong-shock regime takes over above it. At 10<sup>9</sup> /s the yield stress itself is high and the hardening saturates almost at once.</p>
+    <p><b>Temperatures.</b> The saturation stress falls strongly with the temperature at the slow rate; at the fast rate the effect is weaker. The yield stress of annealed copper stays low.</p>
+    <p><b>Rate jump.</b> Like Zerilli–Armstrong, PTW is an equation of state in ε<sub>p</sub>, ε̇<sub>p</sub> and T, so the jump curve follows the monotonic curves without history. The hardening rate decreases almost linearly with the stress, the Voce shape.</p>
+    <h2>Original reference</h2>
+    <p>D. L. Preston, D. L. Tonks and D. C. Wallace, “Model of plastic deformation for extreme loading conditions”, <i>Journal of Applied Physics</i> 93 (2003) 211–220.</p>
+    <p class="note">The scaled parameters are those given for OFHC copper; G<sub>0</sub> and α are approximate. The shear modulus does not depend on the pressure here. Constant temperature, small-strain uniaxial model.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+const ptw = (m, T) => VP.PTW({ E: m.E, T, theta: m.theta, pp: m.pp, s0: m.s0, sinf: m.sinf, kappa: m.kappa, gamma: m.gamma, y0: m.y0, yinf: m.yinf,
+  y1: m.y1, y2: m.y2, beta: m.beta, G0: m.G0, alpha: m.alpha, Tm: m.Tm, rho: m.rho, M: m.M });
+EVPPage({
+  mat: [
+    { id: 'T', label: 'T (rates, jump, relaxation)', name: 'T', unit: 'K', value: 300, gt: 0, max: 5000 },
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 124000, gt: 0 },
+    { id: 'theta', label: 'θ', name: 'θ', unit: '–', value: 0.025, min: 0 },
+    { id: 'pp', label: 'p', name: 'p', unit: '–', value: 2, gt: 0 },
+    { id: 's0', label: 's<sub>0</sub>', name: 's0', unit: '–', value: 0.0085, gt: 0 },
+    { id: 'sinf', label: 's<sub>∞</sub>', name: 's∞', unit: '–', value: 0.00055, gt: 0 },
+    { id: 'kappa', label: 'κ', name: 'κ', unit: '–', value: 0.11, gt: 0 },
+    { id: 'gamma', label: 'γ', name: 'γ', unit: '–', value: 1e-5, gt: 0 },
+    { id: 'y0', label: 'y<sub>0</sub>', name: 'y0', unit: '–', value: 0.0001, gt: 0 },
+    { id: 'yinf', label: 'y<sub>∞</sub>', name: 'y∞', unit: '–', value: 0.0001, gt: 0 },
+    { id: 'y1', label: 'y<sub>1</sub>', name: 'y1', unit: '–', value: 0.094, gt: 0 },
+    { id: 'y2', label: 'y<sub>2</sub>', name: 'y2', unit: '–', value: 0.575, gt: 0 },
+    { id: 'beta', label: 'β', name: 'β', unit: '–', value: 0.25, gt: 0 },
+    { id: 'G0', label: 'G<sub>0</sub>', name: 'G0', unit: 'GPa', value: 51.8, gt: 0 },
+    { id: 'alpha', label: 'α (G softening)', name: 'α', unit: '–', value: 0.2, min: 0, max: 1 },
+    { id: 'Tm', label: 'T<sub>m</sub>', name: 'Tm', unit: 'K', value: 1356, gt: 0 },
+    { id: 'rho', label: 'ρ', name: 'ρ', unit: 'g/cm³', value: 8.96, gt: 0 },
+    { id: 'M', label: 'Atomic mass', name: 'M', unit: 'g/mol', value: 63.55, gt: 0 },
+  ],
+  models: (m) => [{ name: 'PTW', make: () => ptw(m, m.T) }],
+  thermal: (m) => [{ name: 'PTW', make: (T) => ptw(m, T) }],
+  dstrain: 1e-4,
+  tests: ['rates', 'temps', 'jump', 'relax'],
+  defaults: { emax: 20, r1: 1e-3, r2: 1e3, r3: '1e9', T1: 77, T2: 300, T3: 900, tr1: 1e-3, tr2: 1e3, ja: 1e-3, jb: 1e3, j1: 10, j2: 20, j3: 30, e0: 5, rr: 1e-3, rt: 1000 },
+  check: (m, test, v) => (m.T >= m.Tm || (test === 'temps' && v.T3 >= m.Tm) ? 'The temperatures must stay below the melting temperature Tm.' : null),
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

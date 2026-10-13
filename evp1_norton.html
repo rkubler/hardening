@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Norton creep law – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">EVP1 · Elastoviscoplastic (rate-dependent) models</p>
+  <h1>Norton power law (1929)</h1>
+  <p class="lede">The simplest viscoplastic model: the plastic strain rate is a power of the stress, and there is no elastic domain. Any stress, however small, makes the material flow. Run creep, relaxation, tension at several rates and strain cycles, and compare with the closed-form solutions.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      ε = ε<sup>e</sup> + ε<sup>p</sup>, &nbsp; σ = E ε<sup>e</sup> &nbsp;&nbsp;&nbsp;&nbsp;
+      ε̇<sup>p</sup> = (|σ| / K)<sup>n</sup> sign(σ)
+    </div>
+    <ul>
+      <li><b>K</b> (MPa·s<sup>1/n</sup>) is the drag stress: the stress that gives a plastic strain rate of 1 /s. <b>n</b> is the Norton exponent; it is 3 to 8 for most metals in the power-law creep regime.</li>
+      <li>There is no yield stress and no hardening: the state of the material is described by the stress alone.</li>
+      <li>In multiaxial form, ε̇<sup>p</sup> = <sup>3</sup>&frasl;<sub>2</sub> (J(σ)/K)<sup>n</sup> s/J(σ), with s the stress deviator.</li>
+    </ul>
+    <h2>Closed-form results</h2>
+    <ul>
+      <li><b>Creep</b> at constant stress: the strain rate is constant, ε̇ = (σ/K)<sup>n</sup>. The model only gives secondary (steady-state) creep; primary creep needs hardening (EVP3, EVP4).</li>
+      <li><b>Tension</b> at constant ε̇: the stress tends to the steady value σ = K ε̇<sup>1/n</sup>. Multiplying the rate by 100 multiplies the stress by 100<sup>1/n</sup>; the rate sensitivity d ln σ / d ln ε̇ is 1/n.</li>
+      <li><b>Relaxation</b> from σ<sub>0</sub>: σ(t) = [σ<sub>0</sub><sup>1−n</sup> + (n − 1) E t / K<sup>n</sup>]<sup>1/(1−n)</sup>. The stress decays towards zero, slower and slower: for long times σ ∝ t<sup>−1/(n−1)</sup>, a straight line in log–log axes.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Creep.</b> Each curve is a straight line after the loading: steady creep at a rate that grows as σ<sup>n</sup>. The read-out compares the computed rate with (σ/K)<sup>n</sup>. In the second plot the creep rate is a horizontal line.</p>
+    <p><b>Relaxation.</b> The dashed line is the closed-form solution above; the computed curve lies on it. The stress keeps decreasing, with no threshold.</p>
+    <p><b>Tension at several rates.</b> No yield point, a smooth curve that saturates at K ε̇<sup>1/n</sup>, and a straight line of slope 1/n in the second plot (stress against log rate, read on log–log axes: ln σ = ln K + (1/n) ln ε̇).</p>
+    <p><b>Strain cycles.</b> At the slow rate the loops are flat and the stresses low; at the fast rate they are higher. There is no Bauschinger effect and no cyclic hardening: the loop is the same from the first cycle on.</p>
+    <p class="note">Norton's law is mostly used for creep at high temperature, alone or as the flow rule of the unified models (EVP3). Parameters are illustrative.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+EVPPage({
+  mat: [
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+    { id: 'K', label: 'K', name: 'K', unit: 'MPa·s<sup>1/n</sup>', value: 1500, gt: 0 },
+    { id: 'n', label: 'n', name: 'n', unit: '–', value: 5, min: 1, max: 30 },
+  ],
+  models: (m) => [{ name: 'Norton', make: () => VP.Norton({ E: m.E, K: m.K, n: m.n }) }],
+  tests: ['creep', 'relax', 'rates', 'cycles'],
+  defaults: { c1: 100, c2: 140, c3: 180, ct: 1000, csr: 100, e0: 1, rr: 1e-3, rt: 1000, emax: 2, r1: 1e-5, r2: 1e-3, r3: 1e-1, ea: 0.5, q1: 1e-5, q2: 1e-2, qN: 3, qh: 0 },
+  extra: {
+    creepRate: (m, s) => Math.pow(s / m.K, m.n),
+    relaxRef: (m, v, s0, ts) => ({ name: 'Closed form', pts: ts.map((t) => [Math.log10(t), Math.pow(Math.pow(s0, 1 - m.n) + (m.n - 1) * m.E * t / Math.pow(m.K, m.n), 1 / (1 - m.n))]) }),
+  },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

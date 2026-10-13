@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaboche unified viscoplastic model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">EVP3 · Elastoviscoplastic (rate-dependent) models</p>
+  <h1>Unified viscoplasticity (Chaboche, 1989)</h1>
+  <p class="lede">The Chaboche model with a Norton flow rule on the overstress: kinematic hardening (Armstrong–Frederick back stress), isotropic hardening (Voce) and rate dependence in one set of equations. It describes creep, relaxation, cyclic loops and their interaction, which is why it is used for high-temperature components. Each run compares it with its rate-independent limit.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      f = |σ − X| − R − k &nbsp;&nbsp;&nbsp;&nbsp;
+      ṗ = ⟨f / K⟩<sup>n</sup>, &nbsp; ε̇<sup>p</sup> = ṗ sign(σ − X)<br>
+      Ẋ = C ε̇<sup>p</sup> − γ X ṗ &nbsp;&nbsp;&nbsp;&nbsp;
+      Ṙ = b (Q − R) ṗ
+    </div>
+    <ul>
+      <li>The yield function f is the same as in the rate-independent Chaboche model (pages A and B), but f may now be positive: f is the <b>overstress</b> (also called viscous stress), and σ = X ± (k + R + K ṗ<sup>1/n</sup>).</li>
+      <li><b>K, n</b>: Norton parameters of the viscous stress. A small K or a large n brings the model close to rate-independent plasticity; the comparison curve uses K = 10<sup>−3</sup> MPa·s<sup>1/n</sup>.</li>
+      <li>"Unified" means that the same plastic strain describes both creep and plasticity; there is no separate creep strain.</li>
+      <li>Static recovery terms (page D), which make X and R decay with time, are often added; they are left out here.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Strain cycles at two rates.</b> The loops have the Armstrong–Frederick shape (Bauschinger effect) and grow with isotropic hardening; the fast loops are taller by the viscous stress. Add a hold at the peaks: the stress relaxes during each hold, and the relaxed amount is a direct measure of the viscous stress.</p>
+    <p><b>Ratcheting at two rates.</b> At the slow stress rate the material spends more time at high stress, so each cycle adds more strain: ratcheting depends on time, not only on the number of cycles.</p>
+    <p><b>Creep.</b> Primary creep appears: the creep rate decreases as X and R grow, then tends to a steady value when X saturates (where the recall term balances the hardening). Below k + Q + C/γ the creep finally stops; this model has no true steady creep without static recovery.</p>
+    <p><b>Relaxation.</b> The stress relaxes to X + k + R, the edge of the elastic domain, not to zero.</p>
+    <p class="note">Parameters are illustrative, of the order of those of a stainless steel at about 600 °C. The integration is implicit in the plastic increment, so that large n remain stable.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+EVPPage({
+  mat: [
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 160000, gt: 0 },
+    { id: 'k', label: 'k (initial size)', name: 'k', unit: 'MPa', value: 100, min: 0 },
+    { id: 'K', label: 'K', name: 'K', unit: 'MPa·s<sup>1/n</sup>', value: 200, gt: 0 },
+    { id: 'n', label: 'n', name: 'n', unit: '–', value: 8, min: 1, max: 40 },
+    { id: 'C', label: 'C', name: 'C', unit: 'MPa', value: 50000, min: 0 },
+    { id: 'g', label: 'γ', name: 'γ', unit: '–', value: 500, min: 0 },
+    { id: 'Q', label: 'Q (Voce)', name: 'Q', unit: 'MPa', value: 80, min: -500 },
+    { id: 'b', label: 'b (Voce)', name: 'b', unit: '–', value: 10, min: 0 },
+  ],
+  models: (m) => {
+    const pp = (K) => ({ E: m.E, k: m.k, K, n: m.n, C: m.C, g: m.g, Q: m.Q, b: m.b });
+    return [
+      { name: 'Viscoplastic', make: () => VP.Chaboche(pp(m.K)) },
+      { name: 'Rate-independent', make: () => VP.Chaboche(pp(1e-3)) },
+    ];
+  },
+  tests: ['cycles', 'ratchet', 'creep', 'relax', 'rates'],
+  defaults: { ea: 0.6, q1: 1e-5, q2: 1e-2, qN: 5, qh: 0, smax: 220, smin: -180, w1: 1, w2: 100, wN: 20, c1: 180, c2: 220, c3: 260, csr: 50, ct: 3600, e0: 1, rr: 1e-3, rt: 3600, emax: 2, r1: 1e-5, r2: 1e-3, r3: 1e-1 },
+  check: (m, test, v) => {
+    const cap = m.k + Math.max(m.Q, 0) + (m.g > 0 ? m.C / m.g : Infinity);
+    if (m.k + m.Q < 0) return 'k + Q must stay positive.';
+    if (test === 'ratchet' && Math.max(v.smax, -v.smin) >= 0.97 * cap) return `The peak stress must stay below k + Q + C/γ = ${Math.round(cap)} MPa, otherwise the slow cycles never stop flowing.`;
+    if (test === 'creep' && v.c3 >= 0.99 * cap) return `The creep stresses must stay below k + Q + C/γ = ${Math.round(cap)} MPa (no steady state above it).`;
+    return null;
+  },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

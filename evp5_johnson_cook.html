@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Johnson–Cook model – simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← All simulators</a>
+  <p class="tag">EVP5 · Elastoviscoplastic (rate-dependent) models</p>
+  <h1>Johnson–Cook (1983)</h1>
+  <p class="lede">The standard model for high strain rates (impact, machining, crash). The flow stress is a product of three factors: strain hardening, a logarithmic rate term and thermal softening. Written here as a viscoplastic flow rule, so it can also be run in relaxation, where its limits show.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Results">
+      <div class="stats" id="stats"></div>
+        <div class="plotbox"><p class="cap" id="p1Cap">First plot</p><div class="legend" id="p1Leg"></div><svg id="p1" role="img" aria-label="First plot"></svg><div class="tip" id="p1Tip"></div></div>
+        <div class="plotbox"><p class="cap" id="p2Cap">Second plot</p><div class="legend" id="p2Leg"></div><svg id="p2" role="img" aria-label="Second plot"></svg><div class="tip" id="p2Tip"></div></div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Material parameters</h2>
+        <div id="matFields"></div>
+      </section>
+      <section class="panel">
+        <h2>Loading</h2>
+        <label class="sub" for="testSel">Test</label>
+        <select id="testSel"></select>
+        <p class="note" id="testDesc" style="margin:0 0 10px"></p>
+        <div id="testFields"></div>
+        <button class="primary" id="runBtn">Run simulation</button>
+        <p class="err" id="err" role="alert"></p>
+        <p class="status" id="status" aria-live="polite"></p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="explain">
+    <h2>Constitutive equations</h2>
+    <div class="eqblock">
+      σ = (A + B p<sup>n</sup>) (1 + C ln(ṗ / ε̇<sub>0</sub>)) (1 − T*<sup>m</sup>), &nbsp; T* = (T − T<sub>ref</sub>)/(T<sub>melt</sub> − T<sub>ref</sub>)<br>
+      inverted: &nbsp; ṗ = ε̇<sub>0</sub> exp[ (|σ|/σ<sub>s</sub>(p) − 1) / C ] for |σ| &gt; σ<sub>s</sub>(p), &nbsp; σ<sub>s</sub>(p) = (A + B p<sup>n</sup>)(1 − T*<sup>m</sup>)
+    </div>
+    <ul>
+      <li><b>A, B, n</b>: yield stress and strain hardening (Ludwik form) at the reference rate ε̇<sub>0</sub> and room temperature.</li>
+      <li><b>C</b>: rate sensitivity. The flow stress rises by a factor 1 + C ln 10 per decade of strain rate: about 3 % per decade for C = 0.014.</li>
+      <li><b>T*, m</b>: homologous temperature and thermal softening exponent. Here T* is a fixed input (isothermal test); in impact simulations it is raised by the adiabatic heating of plastic work.</li>
+      <li>The original equation gives σ for a known rate. For a material point, it is inverted as above. Below the reference rate the logarithm would give a lower stress than σ<sub>s</sub>; most codes, like this page, cut it off: no plastic flow while |σ| ≤ σ<sub>s</sub>(p), so below ε̇<sub>0</sub> the response is rate independent.</li>
+    </ul>
+    <h2>What to look for</h2>
+    <p><b>Tension at several rates.</b> Rates below ε̇<sub>0</sub> give the same curve (the cut-off); above it the curves rise by the same factor at every strain: rate and hardening are uncoupled (multiplicative). The second plot is a straight line above ε̇<sub>0</sub>, of slope C·σ<sub>s</sub> ln 10 per decade, and flat below. The second curve uses the temperature T* you set: the whole surface is scaled by 1 − T*<sup>m</sup>.</p>
+    <p><b>Relaxation.</b> The stress relaxes quickly down to σ<sub>s</sub>(p) and stops there: the model has a yield surface and no creep below it.</p>
+    <p class="note">Default parameters are the classic values for 4340 steel (A = 792 MPa, B = 510 MPa, n = 0.26, C = 0.014, m = 1.03, ε̇<sub>0</sub> = 1 /s). Isothermal: no adiabatic heating.</p>
+  </section>
+</main>
+<script src="js/plot.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/evp.js"></script>
+<script src="js/evpui.js"></script>
+<script>
+const VP = Viscoplastic.laws;
+EVPPage({
+  mat: [
+    { id: 'E', label: 'E', name: 'E', unit: 'MPa', value: 200000, gt: 0 },
+    { id: 'A', label: 'A', name: 'A', unit: 'MPa', value: 792, gt: 0 },
+    { id: 'B', label: 'B', name: 'B', unit: 'MPa', value: 510, min: 0 },
+    { id: 'n', label: 'n', name: 'n', unit: '–', value: 0.26, gt: 0, max: 1 },
+    { id: 'C', label: 'C', name: 'C', unit: '–', value: 0.014, gt: 0, max: 1 },
+    { id: 'ed0', label: 'ε̇<sub>0</sub>', name: 'ε̇0', unit: '1/s', value: 1, gt: 0 },
+    { id: 'mT', label: 'm (thermal)', name: 'm', unit: '–', value: 1.03, gt: 0 },
+    { id: 'T', label: 'T* (second curve)', name: 'T*', unit: '–', value: 0.3, min: 0, max: 0.95 },
+  ],
+  models: (m) => {
+    const pp = (T) => ({ E: m.E, A: m.A, B: m.B, n: m.n, C: m.C, e0: m.ed0, T, mT: m.mT });
+    return [
+      { name: 'T* = 0', make: () => VP.JohnsonCook(pp(0)) },
+      { name: `T* = ${m.T}`, make: () => VP.JohnsonCook(pp(m.T)) },
+    ];
+  },
+  tests: ['rates', 'relax'],
+  defaults: { emax: 20, r1: 1e-2, r2: 1e1, r3: 1e4, e0: 2, rr: 1e2, rt: 1 },
+});
+</script>
+<!-- Visit counter -->
+<script data-goatcounter="https://rkubler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
