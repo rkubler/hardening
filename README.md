@@ -1,6 +1,9 @@
 # Hardening simulators
 
 Interactive simulators of the cyclic hardening of metals, written for teaching.
+Elastoviscoplastic models, phenomenological and physics-based, are also given to describe the rate dependence of plastic flow.
+The content is based on the course material of two MSc courses, 1. Mechanics of Materials and 2. Kinetic Processes and Mechanical Behavior
+in Materials Science, taught in the [MSc AM2S (Advanced Manufacturing and Materials Science)](https://artsetmetiers.fr/fr/master-science-am2s-advanced-manufacturing-and-materials-science) at Arts et Métiers Science and Technology.
 Each simulator is an HTML page that runs entirely in the browser: no installation is needed.
 
 **Open the simulators:** https://rkubler.github.io/hardening/
@@ -28,6 +31,17 @@ Each simulator is an HTML page that runs entirely in the browser: no installatio
 | D1 | [Teodosiu–Hu](d1_teodosiu_hu.html) | Dislocation structures and polarity; workhardening stagnation, cross hardening after an orthogonal path change |
 | D2 | [Barlat HAH](d2_barlat_hah.html) | Distorted yield surface without back stress; Bauschinger effect, transient and permanent softening |
 | D3 | [Feigenbaum–Dafalias](d3_feigenbaum_dafalias.html) | Directional distortional hardening: egg-shaped yield surface linked to the back stress |
+| EVP1 | [Norton power law](evp1_norton.html) | Creep, relaxation and rate effect without elastic domain; closed-form checks |
+| EVP2 | [Bingham and Perzyna overstress models](evp2_bingham_perzyna.html) | Linear and power-law overstress above a yield stress; rate-independent limit |
+| EVP3 | [Unified viscoplasticity (Chaboche)](evp3_chaboche_viscoplastic.html) | Back stress, Voce hardening and Norton flow; loops at two rates, holds, time-dependent ratcheting |
+| EVP4 | [Bodner–Partom](evp4_bodner_partom.html) | Exponential flow law without yield surface; hardening by plastic work |
+| EVP5 | [Johnson–Cook](evp5_johnson_cook.html) | Multiplicative strain, rate and temperature terms; high strain rates |
+| PB-EVP1 | [Zerilli–Armstrong](pbevp1_zerilli_armstrong.html) | Dislocation-mechanics flow stress, FCC (copper) and BCC (iron) forms; temperatures, rates, rate jumps |
+| PB-EVP2 | [Mechanical Threshold Stress (Follansbee–Kocks)](pbevp2_mts.html) | Thermally activated flow over an evolving threshold stress; strain-rate history effect |
+| PB-EVP3 | [Kocks–Mecking and Estrin–Mecking](pbevp3_kocks_mecking.html) | Dislocation density storage and dynamic recovery, grain size; stage III, rate jumps, creep |
+| PB-EVP4 | [Sellars–Tegart (Garofalo)](pbevp4_sellars_tegart.html) | Hyperbolic sine law of hot working and creep; Zener–Hollomon master curve |
+| PB-EVP5 | [Steinberg–Guinan and Steinberg–Lund](pbevp5_steinberg_guinan.html) | Yield stress scaled by the pressure- and temperature-dependent shear modulus; rate-independent or thermally activated |
+| PB-EVP6 | [Preston–Tonks–Wallace](pbevp6_ptw.html) | Thermal activation and strong-shock regimes, strain rates from 10⁻³ to 10⁹ /s |
 | Ma | [Masing behaviour](masing.html) | Masing and non-Masing hysteresis loops |
 
 Pages D1 to D3 run reverse and orthogonal (tension, then shear) path changes, and their yield surface display shows the distorted shapes.
@@ -41,7 +55,15 @@ with mixed stress or strain control, explicit integration in small increments an
 condition that corrects drift from the yield surface. All kinematic rules above, Voce isotropic
 hardening and static recovery are implemented in the same engine. `js/engine1d.js` holds the
 uniaxial multisurface and two-surface models of pages M2 to M5, with strain or stress control. `js/engine2d.js` holds
-the tension–torsion versions of the microstructure-based and distortional models D1 to D3, with non-circular yield surfaces. `js/plot.js` draws the plots
+the tension–torsion versions of the microstructure-based and distortional models D1 to D3, with non-circular yield surfaces. `js/evp.js` holds the uniaxial
+elastoviscoplastic models EVP1 to EVP5: it integrates in time under strain or stress control, implicitly in the plastic
+strain increment (so that large Norton exponents stay stable), with geometric time steps during holds. `js/evpui.js`
+builds their common tests (rates, creep, relaxation, strain cycles, stress cycles). The Norton relaxation curve matches
+the closed-form solution to within 0.5 %, and the steady creep rate matches (σ/K)ⁿ. The physics-based models PB-EVP1 to PB-EVP6
+are written as flow-stress laws σ = S(εp, ε̇p, T, internal variables): in each step the plastic increment is found so that
+the stress equals S at the plastic strain rate of the step, which gives creep and relaxation from the same equations as tension.
+`js/evpui.js` adds tests at several temperatures, a strain-rate jump test with the Kocks–Mecking plot (θ against σ), and the
+Zener–Hollomon plot. Each PB-EVP page gives the original references of its model. `js/plot.js` draws the plots
 (plain SVG) and `js/ui.js` handles the forms. There are no external libraries.
 
 The engine was checked against independent calculations: the Armstrong–Frederick ratcheting rate
@@ -55,6 +77,7 @@ index.html            home page
 a_… to e7_….html      model simulators
 m2_… to m5_….html     multisurface and two-surface simulators
 d1_… to d3_….html     microstructure-based and distortional simulators
+evp1_… to evp5_….html elastoviscoplastic (rate-dependent) simulators
 mroz.html, masing.html
 css/style.css         shared styles
 js/engine.js          plasticity engine (tension–torsion)
@@ -63,6 +86,8 @@ js/engine2d.js        microstructure-based and distortional models (D1–D3)
 js/plot.js            SVG plots
 js/ui.js              forms and page logic
 js/surface.js         yield surface and plastic strain path displays (E1–E7, D1–D3)
+js/evp.js             elastoviscoplastic models and time integration (EVP1–EVP5, PB-EVP1–PB-EVP6)
+js/evpui.js           common tests and plots of the EVP and PB-EVP pages
 ```
 
 Keep the `css` and `js` folders next to the HTML files: the simulators need them.
@@ -75,7 +100,8 @@ An internet connection is only needed for the fonts; the pages fall back to syst
 ## Notes
 
 All material parameters are illustrative and do not represent a specific material.
-Plastic flow is rate independent; the static recovery simulator adds time dependence through the back stress only.
+Plastic flow is rate independent in simulators A to D3 (the static recovery simulator adds time dependence through the back stress only); EVP1 to EVP5 and PB-EVP1 to PB-EVP6 are rate dependent. The PB-EVP models run at a constant temperature (no adiabatic heating).
+
 
 ## Author
 
